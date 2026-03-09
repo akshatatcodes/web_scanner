@@ -207,33 +207,6 @@ function App() {
                 </div>
               ))}
 
-              {/* Detailed Vulnerabilities Section */}
-              {results.vulnerabilities && Object.keys(results.vulnerabilities).length > 0 && (
-                <div className="result-card glass-panel vulnerabilities-card full-width">
-                  <div className="result-header">
-                    <span className="category-icon">🛡️</span>
-                    <h3 className="result-title">Security Vulnerabilities</h3>
-                  </div>
-                  <div className="vulnerability-list">
-                    {Object.entries(results.vulnerabilities).map(([tech, vulns]) => (
-                      <div key={tech} className="tech-vuln-group">
-                        <h4 className="tech-vuln-title">{tech}</h4>
-                        {vulns.map((v, i) => (
-                          <div key={i} className="vuln-item">
-                            <div className="vuln-meta">
-                              <span className="vuln-id">{v.id}</span>
-                              <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
-                                {v.severity} ({v.score})
-                              </span>
-                            </div>
-                            <p className="vuln-desc">{v.description}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
