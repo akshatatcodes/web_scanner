@@ -1,7 +1,8 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
+  "description": "Backend API for Web Security Exposure Analyzer",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
@@ -15,7 +16,6 @@
     "cheerio": "^1.2.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "puppeteer": "^24.38.0",
-    "wappalyzer": "^6.10.66"
+    "puppeteer": "^24.38.0"
   }
 }
