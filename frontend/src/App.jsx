@@ -173,6 +173,52 @@ function App() {
                 </div>
               </div>
 
+              {/* SSL/TLS Security Card */}
+              {results.sslInfo && (
+                <div className="result-card glass-panel ssl-card">
+                  <div className="result-header">
+                    <span className="category-icon">🔒</span>
+                    <h3 className="result-title">SSL/TLS Security</h3>
+                  </div>
+                  <div className="ssl-details">
+                    <div className="ssl-main-status">
+                      <span className={`status-pill ${results.sslInfo.valid ? 'success' : 'danger'}`}>
+                        {results.sslInfo.valid ? 'Certificate Valid' : 'Insecure / Expired'}
+                      </span>
+                    </div>
+                    <div className="ssl-info-grid">
+                      <div className="ssl-item">
+                        <span className="ssl-label">TLS Version:</span>
+                        <span className={`ssl-val ${results.sslInfo.isProtocolSecure ? 'pos' : 'neg'}`}>
+                          {results.sslInfo.protocol}
+                        </span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Expiry:</span>
+                        <span className={`ssl-val ${results.sslInfo.remainingDays < 30 ? 'neg' : ''}`}>
+                          {results.sslInfo.validTo ? new Date(results.sslInfo.validTo).toLocaleDateString() : 'Unknown'}
+                          ({results.sslInfo.remainingDays} days left)
+                        </span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Cipher:</span>
+                        <span className="ssl-val small-font">{results.sslInfo.cipher}</span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Issuer:</span>
+                        <span className="ssl-val">{results.sslInfo.issuer}</span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">HTTPS Enforced:</span>
+                        <span className={`ssl-val ${results.sslInfo.httpsEnforced ? 'pos' : 'neg'}`}>
+                          {results.sslInfo.httpsEnforced ? 'Enforced' : 'Not Detected'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {Object.entries(grouped).map(([category, techs]) => (
                 <div key={category} className="result-card glass-panel">
                   <div className="result-header">

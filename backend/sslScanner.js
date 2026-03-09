@@ -1,0 +1,114 @@
+const tls = require('tls');
+const https = require('https');
+
+/**
+ * SSL/TLS Security Scanner Module
+ */
+class SSLScanner {
+    /**
+     * Scan a target for SSL/TLS configuration
+     * @param {string} url - Target URL
+     */
+    async scan(url) {
+        try {
+            const hostname = new URL(url).hostname;
+            const certInfo = await this.getCertificate(hostname);
+            const httpsEnforced = await this.checkHttpsEnforcement(hostname);
+
+            return {
+                ...certInfo,
+                httpsEnforced,
+                timestamp: new Date().toISOString()
+            };
+        } catch (error) {
+            console.error('[SSL Scanner Error]:', error.message);
+            return {
+                valid: false,
+                error: error.message,
+                protocol: 'Unknown',
+                cipher: 'Unknown'
+            };
+        }
+    }
+
+    /**
+     * Connect via TLS and extract certificate/protocol info
+     */
+    async getCertificate(hostname) {
+        return new Promise((resolve, reject) => {
+            const options = {
+                hostname: hostname,
+                port: 443,
+                method: 'GET',
+                rejectUnauthorized: false, // We want to inspect even invalid certs
+                servername: hostname
+            };
+
+            const req = https.request(options, (res) => {
+                const socket = res.socket;
+                const cert = socket.getPeerCertificate(true);
+                const protocol = socket.getProtocol();
+                const cipher = socket.getCipher();
+
+                if (!cert || Object.keys(cert).length === 0) {
+                    resolve({
+                        valid: false,
+                        error: 'No certificate found'
+                    });
+                    return;
+                }
+
+                const now = new Date();
+                const validTo = new Date(cert.valid_to);
+                const validFrom = new Date(cert.valid_from);
+                const isExpired = now > validTo;
+                const isNotYetValid = now < validFrom;
+
+                // Detection for weak protocols
+                const insecureProtocols = ['SSLv2', 'SSLv3', 'TLSv1', 'TLSv1.1'];
+                const isProtocolSecure = !insecureProtocols.includes(protocol);
+
+                resolve({
+                    valid: !isExpired && !isNotYetValid,
+                    subject: cert.subject?.CN || 'Unknown',
+                    issuer: cert.issuer?.O || cert.issuer?.CN || 'Unknown',
+                    validFrom: cert.valid_from,
+                    validTo: cert.valid_to,
+                    remainingDays: Math.floor((validTo - now) / (1000 * 60 * 60 * 24)),
+                    protocol: protocol,
+                    isProtocolSecure,
+                    cipher: cipher.name,
+                    bits: cipher.bits,
+                    fingerprint: cert.fingerprint
+                });
+            });
+
+            req.on('error', (e) => {
+                resolve({ valid: false, error: e.message });
+            });
+
+            req.on('timeout', () => {
+                req.destroy();
+                resolve({ valid: false, error: 'Connection timeout' });
+            });
+
+            req.setTimeout(5000);
+            req.end();
+        });
+    }
+
+    /**
+     * Check if HTTPS is enforced (redirects from HTTP to HTTPS)
+     */
+    async checkHttpsEnforcement(hostname) {
+        return new Promise((resolve) => {
+            https.get(`http://${hostname}`, { timeout: 3000 }, (res) => {
+                resolve(res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 308);
+            }).on('error', () => {
+                resolve(false);
+            });
+        });
+    }
+}
+
+module.exports = new SSLScanner();

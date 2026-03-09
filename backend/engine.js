@@ -4,6 +4,7 @@ const headerScanner = require('./headerScanner');
 const dnsScanner = require('./dnsScanner');
 const hostingDetector = require('./hostingDetector');
 const vulnerabilityScanner = require('./vulnerabilityScanner');
+const sslScanner = require('./sslScanner');
 const axios = require('axios');
 const { URL } = require('url');
 const technologies = require('./rules/technologies');
@@ -25,14 +26,15 @@ async function run(url) {
     try {
         const domain = new URL(url).hostname;
 
-        // 1. Static signals
-        const [staticRes, dnsInfo] = await Promise.all([
+        // 1. Static signals + SSL check
+        const [staticRes, dnsInfo, sslInfo] = await Promise.all([
             axios.get(url, {
                 timeout: 10000,
                 validateStatus: null,
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
             }),
-            dnsScanner.scan(domain)
+            dnsScanner.scan(domain),
+            sslScanner.scan(url)
         ]);
 
         const staticHeaders = staticRes.headers;
@@ -78,12 +80,9 @@ async function run(url) {
                     }
 
                     if (current !== undefined && current !== null) {
-                        // Capture value for matching (limit string length)
                         if (typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean') {
                             data.jsVariables[path] = String(current);
                         } else {
-                            // If it's an object/function, we just mark it as existing
-                            // unless it has a common version property we can snag
                             data.jsVariables[path] = current.version || current.VERSION || (current.fn && current.fn.jquery) || 'exists';
                         }
                     }
@@ -112,17 +111,21 @@ async function run(url) {
         const detectedTechnologies = await techScanner.scan(scanData);
         const hostingProvider = await hostingDetector.detect(dnsInfo, staticHeaders);
 
-        // 4. Security Vulnerability Scan (NVD API)
-        const vulnerabilities = await vulnerabilityScanner.scanAll(detectedTechnologies);
+        // 4. Security vulnerability and headers
+        const [vulnerabilities, securityHeaders] = await Promise.all([
+            vulnerabilityScanner.scanAll(detectedTechnologies),
+            headerScanner.scan(url)
+        ]);
 
         return {
             url,
             timestamp: new Date().toISOString(),
             technologies: detectedTechnologies,
-            securityHeaders: await headerScanner.scan(url),
+            securityHeaders,
             dnsInfo,
             hostingProvider,
-            vulnerabilities
+            vulnerabilities,
+            sslInfo
         };
 
     } catch (err) {
