@@ -5,7 +5,7 @@ A **Web Security Exposure Analyzer** that detects technology stacks and security
 ## Tech Stack
 - **Frontend**: React 18 + Vite
 - **Backend**: Node.js + Express
-- **Scanner Engine**: Node.js (Puppeteer + axios + cheerio) + Python (requests + beautifulsoup4)
+- **Scanner Engine**: Node.js (Puppeteer + axios + cheerio)
 
 ## Features (Phase 1 — MVP)
 - Detect frontend frameworks (React, Vue, Angular, Svelte, Next.js, etc.)
@@ -14,7 +14,6 @@ A **Web Security Exposure Analyzer** that detects technology stacks and security
 - Detect web servers (Apache, Nginx, IIS, LiteSpeed, etc.)
 - Detect CDNs (Cloudflare, Akamai, CloudFront, Fastly, etc.)
 - Detect analytics tools (Google Analytics, GTM, Facebook Pixel, Hotjar, etc.)
-- Basic XSS risk signals via Python analysis engine
 
 ## Running Locally
 

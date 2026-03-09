@@ -2,26 +2,37 @@ import { useState } from 'react';
 import axios from 'axios';
 import './index.css';
 
-// SVG Icons
 const SearchIcon = () => (
-  <svg xmlns="http://www.0000.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8"></circle>
     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
   </svg>
 );
 
-const CheckCircleIcon = () => (
-  <svg xmlns="http://www.worg/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--success)' }}>
-    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-  </svg>
-);
-
-const ShieldIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-  </svg>
-);
+const CategoryIcon = ({ category }) => {
+  const icons = {
+    'CMS': '📝',
+    'Analytics': '📊',
+    'Web Frameworks': '⚙️',
+    'Frontend Frameworks': '🖼️',
+    'CDNs': '🌐',
+    'E-commerce': '🛍️',
+    'JavaScript Libraries': '📚',
+    'Web Servers': '🖥️',
+    'Programming Languages': '💻',
+    'UI Frameworks': '🎨',
+    'Security': '🛡️',
+    'Databases': '🗄️',
+    'Reverse Proxies': '🔄',
+    'Infrastructure': '🏗️',
+    'DNS': '📡',
+    'Network/Trackers': '🕵️',
+    'Cookies/Storage': '🍪',
+    'Assets/CDN': '📦',
+    'JS Runtime': '🚀'
+  };
+  return <span className="category-icon">{icons[category] || '📦'}</span>;
+};
 
 function App() {
   const [url, setUrl] = useState('');
@@ -37,117 +48,144 @@ function App() {
     setError('');
     setResults(null);
 
+    let targetUrl = url.trim();
+    if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
+
     try {
-      const response = await axios.post('http://localhost:5000/api/scan', { url });
+      const response = await axios.post('http://localhost:5000/api/scan', { url: targetUrl });
       setResults(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Failed to scan the target URL. Make sure the backend is running.');
+      setError(err.response?.data?.error || err.message || 'Failed to scan the target.');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderTags = (items, fallbackText = "Not Detected") => {
-    if (!items || items.length === 0) {
-      return <span className="tag-empty">{fallbackText}</span>;
-    }
-    return (
-      <div className="tags-container">
-        {items.map((item, index) => (
-          <span key={index} className="tag">{item}</span>
-        ))}
-      </div>
-    );
+  const getGroupedDetections = () => {
+    if (!results || !results.technologies) return {};
+    const groups = {};
+    results.technologies.forEach(tech => {
+      const cats = tech.categories || ['Miscellaneous'];
+      cats.forEach(cat => {
+        const catName = typeof cat === 'string' ? cat : cat.name;
+        if (!groups[catName]) groups[catName] = [];
+        // Prevent duplicates in same category
+        if (!groups[catName].some(t => t.name === tech.name)) {
+          groups[catName].push({
+            name: tech.name,
+            version: tech.version,
+            icon: tech.icon
+          });
+        }
+      });
+    });
+    return groups;
   };
+
+  const grouped = getGroupedDetections();
 
   return (
     <div className="app-container">
       <header>
-        <h1>Exposure Analyzer</h1>
+        <div className="logo">SUPER ANALYZER PRO</div>
+        <h1>Multi-Layer Web Profiler</h1>
         <p className="subtitle">
-          Detect technology stacks, frameworks, and uncover potential exposure footprint of any valid web target.
+          Advanced fingerprinting using Wappalyzer Core, Network Analysis, and Runtime Probing.
         </p>
       </header>
 
       <main>
         <div className="search-container">
-          <form className="search-form glass-panel" style={{ padding: '0.5rem' }} onSubmit={handleScan}>
+          <form className="search-form glass-panel" onSubmit={handleScan}>
             <input
               type="text"
               className="search-input"
-              placeholder="Enter target URL (e.g. https://example.com)..."
+              placeholder="Enter target URL..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               disabled={loading}
               autoFocus
             />
             <button type="submit" className="btn-primary" disabled={loading || !url}>
-              {loading ? 'Scanning...' : (
+              {loading ? 'Analyzing Layers...' : (
                 <>
                   <SearchIcon />
-                  Analyze
+                  Deep Scan
                 </>
               )}
             </button>
           </form>
         </div>
 
-        {error && (
-          <div className="error-message glass-panel">
-            <strong>Error: </strong> {error}
-          </div>
-        )}
+        {error && <div className="error-message glass-panel">{error}</div>}
 
         {loading && (
           <div className="loader-container">
             <div className="spinner"></div>
-            <div className="loader-text">Analyzing Target Infrastructure...</div>
+            <div className="loader-text">Probing Network & Runtime JS...</div>
           </div>
         )}
 
         {results && !loading && (
-          <div className="results-grid">
-            <div className="result-card glass-panel">
-              <div className="result-header">
-                <div className="result-icon">🌐</div>
-                <h3 className="result-title">Frontend Engine</h3>
+          <div className="results-wrapper fadeIn">
+            <div className="results-header-info glass-panel">
+              <div className="scan-meta">
+                <div className="meta-item">
+                  <span className="meta-label">Target:</span>
+                  <span className="meta-value">{results.url}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Host:</span>
+                  <span className="status-badge success">{results.hostingProvider}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">IP:</span>
+                  <span className="meta-value">{results.dnsInfo?.ip?.[0] || 'Unknown'}</span>
+                </div>
               </div>
-              {renderTags(results.detections?.frontend, "No JavaScript framework detected")}
             </div>
 
-            <div className="result-card glass-panel">
-              <div className="result-header">
-                <div className="result-icon">⚙️</div>
-                <h3 className="result-title">Backend Technology</h3>
+            <div className="results-grid">
+              {/* Infrastructure & Security as priority cards */}
+              <div className="result-card glass-panel security-card">
+                <div className="result-header">
+                  <CategoryIcon category="Security" />
+                  <h3 className="result-title">Security Headers</h3>
+                </div>
+                <div className="security-list">
+                  {Object.entries(results.securityHeaders).map(([k, v]) => (
+                    <div key={k} className="security-item">
+                      <span className="sec-key">{k}:</span>
+                      <span className={`sec-val ${v === 'Not Enabled' ? 'neg' : 'pos'}`}>{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              {renderTags(results.detections?.backend, "No specific backend detected")}
-            </div>
 
-            <div className="result-card glass-panel">
-              <div className="result-header">
-                <div className="result-icon">📝</div>
-                <h3 className="result-title">Content Management</h3>
-              </div>
-              {renderTags(results.detections?.cms, "No known CMS detected")}
-            </div>
-
-            <div className="result-card glass-panel">
-              <div className="result-header">
-                <div className="result-icon">🖥️</div>
-                <h3 className="result-title">Web Server</h3>
-              </div>
-              {renderTags(results.detections?.server, "Server headers hidden or unknown")}
-            </div>
-
-            <div className="result-card glass-panel" style={{ gridColumn: '1 / -1', background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-              <div className="result-header" style={{ borderBottomColor: 'rgba(16, 185, 129, 0.2)' }}>
-                <CheckCircleIcon />
-                <h3 className="result-title" style={{ color: 'var(--success)' }}>Scan Complete</h3>
-              </div>
-              <p style={{ color: 'var(--text-secondary)' }}>
-                Analyzed URL: <strong style={{ color: 'var(--text-primary)' }}>{results.url}</strong> <br />
-                Status Code: <strong style={{ color: 'var(--text-primary)' }}>{results.status}</strong>
-              </p>
+              {Object.entries(grouped).map(([category, techs]) => (
+                <div key={category} className="result-card glass-panel">
+                  <div className="result-header">
+                    <CategoryIcon category={category} />
+                    <h3 className="result-title">{category}</h3>
+                  </div>
+                  <div className="tags-container">
+                    {techs.map((t, i) => (
+                      <span key={i} className="tag tech-tag">
+                        {t.icon && (
+                          <img
+                            src={`https://www.wappalyzer.com/images/icons/${encodeURIComponent(t.icon)}`}
+                            alt=""
+                            className="tech-icon"
+                            onError={(e) => e.target.style.display = 'none'}
+                          />
+                        )}
+                        <span className="tech-name">{t.name}</span>
+                        {t.version && <span className="tech-version">{t.version}</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
