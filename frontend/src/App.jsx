@@ -135,11 +135,11 @@ function App() {
                   <span className="meta-value">{results.url}</span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">Host:</span>
-                  <span className="status-badge success">{results.hostingProvider}</span>
+                  <span className="meta-label">Provider:</span>
+                  <span className="status-badge success">{results.hostingProvider || 'Unknown'}</span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">IP:</span>
+                  <span className="meta-label">IP Address:</span>
                   <span className="meta-value">{results.dnsInfo?.ip?.[0] || 'Unknown'}</span>
                 </div>
               </div>

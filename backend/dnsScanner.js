@@ -3,9 +3,12 @@ const dns = require('dns').promises;
 /**
  * DNS Scanner Module
  */
-async function scan(url) {
+async function scan(input) {
     try {
-        const domain = new URL(url).hostname;
+        let domain = input;
+        if (input && typeof input === 'string' && input.includes('://')) {
+            domain = new URL(input).hostname;
+        }
 
         // Resolve in parallel
         const [a, mx, txt] = await Promise.allSettled([
