@@ -49,6 +49,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
+  const [selectedTechVulns, setSelectedTechVulns] = useState(null);
 
   const handleScan = async (e) => {
     e.preventDefault();
@@ -192,7 +193,11 @@ function App() {
                         <span className="tech-name">{t.name}</span>
                         {t.version && <span className="tech-version">{t.version}</span>}
                         {results.vulnerabilities?.[t.name] && (
-                          <span className="vuln-badge" title={`${results.vulnerabilities[t.name].length} vulnerabilities found`}>
+                          <span
+                            className="vuln-badge clickable"
+                            title="Click to view vulnerabilities"
+                            onClick={() => setSelectedTechVulns({ name: t.name, vulns: results.vulnerabilities[t.name] })}
+                          >
                             ⚠️ {results.vulnerabilities[t.name].length}
                           </span>
                         )}
@@ -233,6 +238,34 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Vulnerability Modal */}
+      {selectedTechVulns && (
+        <div className="modal-overlay fadeIn" onClick={() => setSelectedTechVulns(null)}>
+          <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Vulnerabilities: {selectedTechVulns.name}</h2>
+              <button className="close-btn" onClick={() => setSelectedTechVulns(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              {selectedTechVulns.vulns.map((v, i) => (
+                <div key={i} className="vuln-item">
+                  <div className="vuln-meta">
+                    <span className="vuln-id">{v.id}</span>
+                    <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
+                      {v.severity} ({v.score})
+                    </span>
+                  </div>
+                  <p className="vuln-desc">{v.description}</p>
+                  <div className="vuln-footer">
+                    <span className="vuln-date">Published: {new Date(v.published).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
