@@ -3,6 +3,7 @@ const techScanner = require('./technologyScanner');
 const headerScanner = require('./headerScanner');
 const dnsScanner = require('./dnsScanner');
 const hostingDetector = require('./hostingDetector');
+const vulnerabilityScanner = require('./vulnerabilityScanner');
 const axios = require('axios');
 const { URL } = require('url');
 const technologies = require('./rules/technologies');
@@ -111,13 +112,17 @@ async function run(url) {
         const detectedTechnologies = await techScanner.scan(scanData);
         const hostingProvider = await hostingDetector.detect(dnsInfo, staticHeaders);
 
+        // 4. Security Vulnerability Scan (NVD API)
+        const vulnerabilities = await vulnerabilityScanner.scanAll(detectedTechnologies);
+
         return {
             url,
             timestamp: new Date().toISOString(),
             technologies: detectedTechnologies,
             securityHeaders: await headerScanner.scan(url),
             dnsInfo,
-            hostingProvider
+            hostingProvider,
+            vulnerabilities
         };
 
     } catch (err) {
