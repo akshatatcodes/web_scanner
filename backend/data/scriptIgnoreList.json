@@ -1,0 +1,12 @@
+{
+  "ignoreList": [
+    "google-analytics.com",
+    "googletagmanager.com",
+    "facebook.net",
+    "stripe.com",
+    "connect.facebook.net",
+    "bat.bing.com",
+    "hotjar.com",
+    "intercomcdn.com"
+  ]
+}

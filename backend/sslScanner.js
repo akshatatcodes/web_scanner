@@ -1,5 +1,6 @@
 const tls = require('tls');
 const https = require('https');
+const http = require('http');
 
 /**
  * SSL/TLS Security Scanner Module
@@ -102,7 +103,7 @@ class SSLScanner {
      */
     async checkHttpsEnforcement(hostname) {
         return new Promise((resolve) => {
-            https.get(`http://${hostname}`, { timeout: 3000 }, (res) => {
+            http.get(`http://${hostname}`, { timeout: 3000 }, (res) => {
                 resolve(res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 308);
             }).on('error', () => {
                 resolve(false);

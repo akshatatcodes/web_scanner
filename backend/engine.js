@@ -4,7 +4,11 @@ const headerScanner = require('./headerScanner');
 const dnsScanner = require('./dnsScanner');
 const hostingDetector = require('./hostingDetector');
 const vulnerabilityScanner = require('./vulnerabilityScanner');
+const cookieScanner = require('./cookieScanner');
 const sslScanner = require('./sslScanner');
+const { issueExplanations } = require('./utils/securityExplainer');
+const scriptScanner = require('./scanners/scriptScanner');
+const { generateSummary } = require('./utils/reportSummary');
 const axios = require('axios');
 const { URL } = require('url');
 const technologies = require('./rules/technologies');
@@ -20,6 +24,7 @@ const PROBE_LIST = Array.from(JS_PATHS_TO_PROBE);
  * Professional Multi-Layer Scanning Engine
  */
 async function run(url) {
+    const startTime = Date.now();
     console.log(`[Engine] Starting deep analysis (with versions) for: ${url}`);
 
     let browser = null;
@@ -54,7 +59,10 @@ async function run(url) {
             const data = {
                 html: document.documentElement.innerHTML,
                 meta: {},
-                scripts: Array.from(document.querySelectorAll('script[src]')).map(s => s.src),
+                scripts: Array.from(document.querySelectorAll('script')).map(s => ({
+                    src: s.src || null,
+                    content: s.src ? null : s.innerText
+                })),
                 links: Array.from(document.querySelectorAll('link[href]')).map(l => l.href),
                 jsVariables: {}
             };
@@ -102,7 +110,7 @@ async function run(url) {
             headers: staticHeaders,
             scripts: pageData.scripts,
             links: pageData.links,
-            cookies: cookies.map(c => ({ name: c.name, value: c.value })),
+            cookies: cookies,
             jsVariables: pageData.jsVariables,
             url,
             meta: pageData.meta
@@ -112,21 +120,62 @@ async function run(url) {
         const hostingProvider = await hostingDetector.detect(dnsInfo, staticHeaders);
 
         // 4. Security vulnerability and headers
-        const [vulnerabilities, securityHeaders] = await Promise.all([
+        const [vulnerabilities, securityHeaders, rawCookieSecurity, suspiciousScripts] = await Promise.all([
             vulnerabilityScanner.scanAll(detectedTechnologies),
-            headerScanner.scan(url)
+            headerScanner.scan(url),
+            cookieScanner.analyze(cookies),
+            scriptScanner.analyze(pageData.scripts)
         ]);
 
-        return {
+        // Attach human explanations to cookie issues
+        const cookieSecurity = rawCookieSecurity.map(cookie => ({
+            ...cookie,
+            humanIssues: cookie.issues.map(issue => ({
+                ...issue,
+                details: issueExplanations[issue.code] || {
+                    title: "Unknown Security Issue",
+                    explanation: "An undocumented security issue was detected.",
+                    impact: "The exact impact of this issue is currently unknown.",
+                    recommendation: "Review the technical details and follow general security best practices."
+                }
+            }))
+        }));
+
+        // Attach human explanations to script issues
+        const processedScripts = suspiciousScripts.map(script => ({
+            ...script,
+            humanIssues: script.issues.map(issue => ({
+                ...issue,
+                details: issueExplanations[issue.code] || {
+                    title: issue.type,
+                    explanation: issue.reason,
+                    impact: "Potentially malicious code execution in the user's browser.",
+                    recommendation: "Only load scripts from trusted providers and avoid risky inline practices."
+                }
+            }))
+        }));
+
+        const scanDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+        const results = {
             url,
+            target: domain,
             timestamp: new Date().toISOString(),
+            scanDuration: `${scanDuration}s`,
             technologies: detectedTechnologies,
             securityHeaders,
             dnsInfo,
             hostingProvider,
             vulnerabilities,
-            sslInfo
+            sslInfo,
+            cookieSecurity,
+            suspiciousScripts: processedScripts
         };
+
+        // Generate Human-Readable Summary
+        results.summary = generateSummary(results);
+
+        return results;
 
     } catch (err) {
         if (browser) await browser.close();

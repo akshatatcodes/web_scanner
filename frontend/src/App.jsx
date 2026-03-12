@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import axios from 'axios';
 import './index.css';
+import CookieSecurity from './components/CookieSecurity';
+import SuspiciousScripts from './components/SuspiciousScripts';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,7 +67,7 @@ function App() {
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
 
     try {
-      const response = await axios.post('http://localhost:5000/api/scan', { url: targetUrl });
+      const response = await axios.post(`${API_BASE}/scan`, { url: targetUrl });
       setResults(response.data);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to scan the target.');
@@ -80,7 +84,6 @@ function App() {
       cats.forEach(cat => {
         const catName = typeof cat === 'string' ? cat : cat.name;
         if (!groups[catName]) groups[catName] = [];
-        // Prevent duplicates in same category
         if (!groups[catName].some(t => t.name === tech.name)) {
           groups[catName].push({
             name: tech.name,
@@ -95,13 +98,22 @@ function App() {
 
   const grouped = getGroupedDetections();
 
+  const getRiskColor = (risk) => {
+    switch (risk) {
+      case 'HIGH': return 'var(--danger)';
+      case 'MEDIUM': return 'var(--warning)';
+      case 'LOW': return 'var(--success)';
+      default: return 'var(--text-secondary)';
+    }
+  };
+
   return (
     <div className="app-container">
       <header>
         <div className="logo">SUPER ANALYZER PRO</div>
-        <h1>Multi-Layer Web Profiler</h1>
+        <h1>Security Exposure Analyzer</h1>
         <p className="subtitle">
-          Advanced fingerprinting using Wappalyzer Core, Network Analysis, and Runtime Probing.
+          Professional-grade security scanning for technologies, cookies, and suspicious scripts.
         </p>
       </header>
 
@@ -128,7 +140,7 @@ function App() {
           </form>
         </div>
 
-        {error && <div className="error-message glass-panel">{error}</div>}
+        {error && <div className="error-message glass-panel" style={{ color: 'var(--danger)', marginTop: '1rem' }}>{error}</div>}
 
         {loading && (
           <div className="loader-container">
@@ -139,25 +151,64 @@ function App() {
 
         {results && !loading && (
           <div className="results-wrapper fadeIn">
-            <div className="results-header-info glass-panel">
+            {/* Scan Summary Alert */}
+            {results.summary && (
+              <div className="glass-panel scan-summary-alert fadeIn">
+                <div className="summary-icon">
+                  {results.summary.totalHighRisks > 0 ? '⚠️' : '🛡️'}
+                </div>
+                <div className="summary-content">
+                  <div className="summary-title">Website Security Summary</div>
+                  <div className="summary-text">{results.summary.message}</div>
+                  <div className="summary-hint">{results.summary.recommendation}</div>
+                </div>
+                <div className="summary-stats">
+                  <div className="stat-item">
+                    <div className="stat-val">{results.summary.totalCookies}</div>
+                    <div className="stat-label">Cookies</div>
+                  </div>
+                  <div className="stat-item">
+                    <div className={`stat-val ${results.summary.totalHighRisks > 0 ? 'neg' : ''}`}>
+                      {results.summary.totalHighRisks}
+                    </div>
+                    <div className="stat-label">High Risks</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Scan Metadata */}
+            <div className="glass-panel results-header-info fadeIn">
               <div className="scan-meta">
                 <div className="meta-item">
                   <span className="meta-label">Target:</span>
-                  <span className="meta-value">{results.url}</span>
+                  <span className="meta-value">{results.target || results.url}</span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">Provider:</span>
-                  <span className="status-badge success">{results.hostingProvider || 'Unknown'}</span>
+                  <span className="meta-label">Status:</span>
+                  <span className="status-badge success">Complete</span>
                 </div>
                 <div className="meta-item">
-                  <span className="meta-label">IP Address:</span>
-                  <span className="meta-value">{results.dnsInfo?.ip?.[0] || 'Unknown'}</span>
+                  <span className="meta-label">Duration:</span>
+                  <span className="meta-value">{results.scanDuration || 'N/A'}</span>
+                </div>
+                <div className="meta-item">
+                  <span className="meta-label">Scan Date:</span>
+                  <span className="meta-value">
+                    {new Date(results.timestamp).toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="results-grid">
-              {/* Infrastructure & Security as priority cards */}
+              {/* Suspicious Scripts - Full Width */}
+              <SuspiciousScripts scripts={results.suspiciousScripts} />
+
+              {/* Cookie Security - Full Width */}
+              <CookieSecurity cookieSecurity={results.cookieSecurity} />
+
+              {/* Infrastructure & Security cards */}
               <div className="result-card glass-panel security-card">
                 <div className="result-header">
                   <CategoryIcon category="Security" />
@@ -173,7 +224,6 @@ function App() {
                 </div>
               </div>
 
-              {/* SSL/TLS Security Card */}
               {results.sslInfo && (
                 <div className="result-card glass-panel ssl-card">
                   <div className="result-header">
@@ -252,7 +302,6 @@ function App() {
                   </div>
                 </div>
               ))}
-
             </div>
           </div>
         )}
