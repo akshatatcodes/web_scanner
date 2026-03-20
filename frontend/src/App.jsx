@@ -3,6 +3,10 @@ import axios from 'axios';
 import './index.css';
 import CookieSecurity from './components/CookieSecurity';
 import SuspiciousScripts from './components/SuspiciousScripts';
+import DomainIntelligence from './components/DomainIntelligence';
+import PortScanResults from './components/PortScanResults';
+import MonitoringPanel from './components/MonitoringPanel';
+import DiscoveryResults from './components/DiscoveryResults';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -49,6 +53,7 @@ const getSeverityClass = (severity) => {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState('scan');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -118,7 +123,24 @@ function App() {
       </header>
 
       <main>
-        <div className="search-container">
+        <div className="nav-tabs">
+          <button 
+            className={`nav-tab ${activeTab === 'scan' ? 'active' : ''}`}
+            onClick={() => setActiveTab('scan')}
+          >
+            🔍 Security Scanner
+          </button>
+          <button 
+            className={`nav-tab ${activeTab === 'monitor' ? 'active' : ''}`}
+            onClick={() => setActiveTab('monitor')}
+          >
+            ⏱️ Automated Monitoring
+          </button>
+        </div>
+
+        {activeTab === 'scan' && (
+          <>
+            <div className="search-container">
           <form className="search-form glass-panel" onSubmit={handleScan}>
             <input
               type="text"
@@ -205,8 +227,32 @@ function App() {
               {/* Suspicious Scripts - Full Width */}
               <SuspiciousScripts scripts={results.suspiciousScripts} />
 
+              {/* Domain Intelligence - Full Width */}
+              <DomainIntelligence domainIntel={results.domainIntel} />
+
+              {/* On-Demand Port Scanning - Full Width */}
+              <PortScanResults targetUrl={results.target || results.url} />
+
               {/* Cookie Security - Full Width */}
               <CookieSecurity cookieSecurity={results.cookieSecurity} />
+
+              {/* Discovery & Exposure Results - Full Width */}
+              <DiscoveryResults 
+                adminPanels={results.adminPanels}
+                hiddenEndpoints={results.hiddenEndpoints}
+                secretLeaks={results.secretLeaks}
+                directories={results.directories}
+                corsIssues={results.corsIssues}
+                graphqlFindings={results.graphqlFindings}
+                openRedirects={results.openRedirects}
+                ssrfFindings={results.ssrfFindings}
+                authBypasses={results.authBypasses}
+                rateLimits={results.rateLimits}
+                sqli={results.sqli}
+                cmdInjection={results.cmdInjection}
+                idors={results.idors}
+                jwtIssues={results.jwtIssues}
+              />
 
               {/* Infrastructure & Security cards */}
               <div className="result-card glass-panel security-card">
@@ -277,7 +323,15 @@ function App() {
                   </div>
                   <div className="tags-container">
                     {techs.map((t, i) => (
-                      <span key={i} className="tag tech-tag">
+                      <span 
+                        key={i} 
+                        className={`tag tech-tag ${t.version ? 'clickable-tag' : ''}`}
+                        onClick={() => t.version && setSelectedTechVulns({ 
+                          name: t.name, 
+                          vulns: results.vulnerabilities?.[t.name] || [] 
+                        })}
+                        title={t.version ? "Click to view vulnerability details" : ""}
+                      >
                         {t.icon && (
                           <img
                             src={`https://www.wappalyzer.com/images/icons/${encodeURIComponent(t.icon)}`}
@@ -287,14 +341,20 @@ function App() {
                           />
                         )}
                         <span className="tech-name">{t.name}</span>
-                        {t.version && <span className="tech-version">{t.version}</span>}
-                        {results.vulnerabilities?.[t.name] && (
+                        {t.version && (
+                          <span className="tech-version">
+                            {t.version}
+                          </span>
+                        )}
+                        {results.vulnerabilities?.[t.name] && results.vulnerabilities[t.name].length > 0 && (
                           <span
-                            className="vuln-badge clickable"
-                            title="Click to view vulnerabilities"
-                            onClick={() => setSelectedTechVulns({ name: t.name, vulns: results.vulnerabilities[t.name] })}
+                            className="vuln-badge"
+                            style={{ pointerEvents: 'none' }}
                           >
                             ⚠️ {results.vulnerabilities[t.name].length}
+                            <span style={{marginLeft: '4px', fontSize: '0.6rem', opacity: 0.9}}>
+                              ({results.vulnerabilities[t.name].sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity})
+                            </span>
                           </span>
                         )}
                       </span>
@@ -305,6 +365,10 @@ function App() {
             </div>
           </div>
         )}
+          </>
+        )}
+
+        {activeTab === 'monitor' && <MonitoringPanel />}
       </main>
 
       {/* Vulnerability Modal */}
@@ -312,24 +376,48 @@ function App() {
         <div className="modal-overlay fadeIn" onClick={() => setSelectedTechVulns(null)}>
           <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Vulnerabilities: {selectedTechVulns.name}</h2>
+              <div style={{ flex: 1 }}>
+                <h2 className="modal-title">Vulnerabilities: {selectedTechVulns.name}</h2>
+                <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.4rem', alignItems: 'center' }}>
+                  <span className="status-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                    {selectedTechVulns.vulns.length} Issues Found
+                  </span>
+                  {selectedTechVulns.vulns.length > 0 && (
+                    <span 
+                      className={`risk-pill small ${getSeverityClass(
+                        selectedTechVulns.vulns.sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity
+                      )}`}
+                    >
+                      Overall Risk: {selectedTechVulns.vulns.sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity}
+                    </span>
+                  )}
+                </div>
+              </div>
               <button className="close-btn" onClick={() => setSelectedTechVulns(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              {selectedTechVulns.vulns.map((v, i) => (
-                <div key={i} className="vuln-item">
-                  <div className="vuln-meta">
-                    <span className="vuln-id">{v.id}</span>
-                    <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
-                      {v.severity} ({v.score})
-                    </span>
+              {selectedTechVulns.vulns.length > 0 ? (
+                selectedTechVulns.vulns.map((v, i) => (
+                  <div key={i} className="vuln-item">
+                    <div className="vuln-meta">
+                      <span className="vuln-id">{v.id}</span>
+                      <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
+                        {v.severity} ({v.score})
+                      </span>
+                    </div>
+                    <p className="vuln-desc">{v.description}</p>
+                    <div className="vuln-footer">
+                      <span className="vuln-date">Published: {new Date(v.published).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <p className="vuln-desc">{v.description}</p>
-                  <div className="vuln-footer">
-                    <span className="vuln-date">Published: {new Date(v.published).toLocaleDateString()}</span>
-                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
+                  <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>No Vulnerabilities Found</h3>
+                  <p>This version of <strong>{selectedTechVulns.name}</strong> appears to be secure or is too new for listed CVEs.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
