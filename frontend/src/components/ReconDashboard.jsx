@@ -1,6 +1,6 @@
 import React from 'react';
 
-const ReconDashboard = ({ domainIntel }) => {
+const ReconDashboard = ({ domainIntel, behaviorProfiling }) => {
   if (!domainIntel || !domainIntel.reconScoring) return null;
 
   const { reconScoring, subdomainIntel, takeovers, wayback, asn, cdnBypass, jsRecon, githubRecon } = domainIntel;
@@ -94,6 +94,38 @@ const ReconDashboard = ({ domainIntel }) => {
              </div>
           )}
         </div>
+
+        {/* Behavior Profiling Engine */}
+        {behaviorProfiling && (
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem' }}>Behavioral Profiler (Phase 7)</div>
+            
+            <div style={{ marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '1rem', marginRight: '0.5rem' }}>🎯</span>
+              <span style={{ fontSize: '0.9rem' }}>
+                <strong>Endpoints Profiled:</strong> {behaviorProfiling.endpointsProfiled || 0}
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '1rem', marginRight: '0.5rem' }}>🧪</span>
+              <span style={{ fontSize: '0.9rem' }}>
+                <strong>Blind Payloads Sent:</strong> {behaviorProfiling.payloadsSent || 0}
+              </span>
+            </div>
+
+            <div style={{ marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '1rem', marginRight: '0.5rem' }}>🚨</span>
+              <span style={{ fontSize: '0.9rem', color: (behaviorProfiling.anomalies && behaviorProfiling.anomalies.length > 0) ? 'var(--danger)' : 'var(--success)' }}>
+                <strong>Anomalies Confirmed:</strong> {behaviorProfiling.anomalies ? behaviorProfiling.anomalies.length : 0}
+              </span>
+            </div>
+            
+            <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Analyzes Time-Based SQLi, LFI, and Auth Logic Flaws by strictly measuring baseline deviations.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

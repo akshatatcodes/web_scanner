@@ -65,6 +65,39 @@ function App() {
   const [deepCrawlDone, setDeepCrawlDone] = useState(false);
   const [deepCrawlError, setDeepCrawlError] = useState('');
   const [crawlContext, setCrawlContext] = useState(null);
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobMessage, setJobMessage] = useState('');
+
+  const pollJobStatus = async (jobId, onComplete, onError, onProgress) => {
+    try {
+      const interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/jobs/${jobId}`);
+          const { state, progress, result, failedReason } = res.data;
+          
+          if (progress?.percentage) {
+             onProgress(progress.percentage, progress.message || '');
+          } else if (typeof progress === 'number') {
+             onProgress(progress, '');
+          }
+
+          if (state === 'completed') {
+            clearInterval(interval);
+            onComplete(result);
+          } else if (state === 'failed') {
+            clearInterval(interval);
+            onError(failedReason || 'Job failed on the server.');
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+          clearInterval(interval);
+          onError('Error checking scan status. The server might be unreachable.');
+        }
+      }, 2000);
+    } catch (err) {
+      onError('Failed to initiate polling.');
+    }
+  };
 
   const handleScan = async (e) => {
     e.preventDefault();
@@ -76,16 +109,33 @@ function App() {
     setDeepCrawlDone(false);
     setDeepCrawlError('');
     setCrawlContext(null);
+    setJobProgress(0);
+    setJobMessage('Submitting scan job...');
 
     let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
 
     try {
       const response = await axios.post(`${API_BASE}/scan`, { url: targetUrl });
-      setResults(response.data);
+      const { jobId } = response.data;
+      
+      await pollJobStatus(jobId, 
+        (finalResult) => {
+           setResults(finalResult);
+           setLoading(false);
+           setJobProgress(100);
+        },
+        (errMessage) => {
+           setError(errMessage);
+           setLoading(false);
+        },
+        (progPct, progMsg) => {
+           setJobProgress(progPct);
+           if (progMsg) setJobMessage(progMsg);
+        }
+      );
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to scan the target.');
-    } finally {
       setLoading(false);
     }
   };
@@ -96,11 +146,22 @@ function App() {
     setDeepCrawlError('');
     try {
       const response = await axios.post(`${API_BASE}/deep-crawl`, { url: results.url });
-      setCrawlContext(response.data.scanContext);
-      setDeepCrawlDone(true);
+      const { jobId } = response.data;
+
+      await pollJobStatus(jobId,
+        (finalResult) => {
+           setCrawlContext(finalResult);
+           setDeepCrawlDone(true);
+           setDeepCrawling(false);
+        },
+        (errMessage) => {
+           setDeepCrawlError(errMessage);
+           setDeepCrawling(false);
+        },
+        () => {} // optional progress updates for deep crawl
+      );
     } catch (err) {
       setDeepCrawlError(err.response?.data?.error || 'Deep crawl failed.');
-    } finally {
       setDeepCrawling(false);
     }
   };
@@ -186,7 +247,8 @@ function App() {
         {loading && (
           <div className="loader-container">
             <div className="spinner"></div>
-            <div className="loader-text">Probing Network & Runtime JS...</div>
+            <div className="loader-text">{jobMessage || 'Probing Network & Runtime JS...'}</div>
+            {jobProgress > 0 && <div style={{marginTop: '1rem', color: 'var(--primary)'}}>{jobProgress}%</div>}
           </div>
         )}
 
@@ -263,7 +325,7 @@ function App() {
 
             <div className="results-grid">
               {/* Recon Hacker OSINT Dashboard - Top Priority */}
-              <ReconDashboard domainIntel={results.domainIntel} />
+              <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
               {/* Attack Chains - High Priority */}
               <AttackChainView chains={results.attackChains} />
 

@@ -24,11 +24,33 @@ const PortScanResults = ({ targetUrl }) => {
                 const errData = await response.json();
                 throw new Error(errData.error || 'Failed to scan ports');
             }
-            const data = await response.json();
-            setScanResults(data.portScan);
+            const { jobId } = await response.json();
+            
+            const poll = setInterval(async () => {
+                try {
+                    const statusRes = await fetch(`http://localhost:5000/api/jobs/${jobId}`);
+                    const statusData = await statusRes.json();
+                    
+                    if (statusData.state === 'completed') {
+                        clearInterval(poll);
+                        // Depending on what worker returns, it might be { portScan: results } or just results
+                        const finalPorts = statusData.result.portScan !== undefined ? statusData.result.portScan : statusData.result;
+                        setScanResults(finalPorts);
+                        setIsScanning(false);
+                    } else if (statusData.state === 'failed') {
+                        clearInterval(poll);
+                        setError(statusData.failedReason || 'Port scan failed.');
+                        setIsScanning(false);
+                    }
+                } catch (err) {
+                    clearInterval(poll);
+                    setError('Error checking port scan status.');
+                    setIsScanning(false);
+                }
+            }, 2000);
+            
         } catch (err) {
             setError(err.message);
-        } finally {
             setIsScanning(false);
         }
     };

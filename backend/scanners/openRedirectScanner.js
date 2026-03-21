@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { createProof } = require('./proof/proofStore');
 
 const REDIRECT_PARAMS = ["next", "url", "redirect", "returnTo", "target", "r", "goto"];
 
@@ -27,7 +28,17 @@ const scanOpenRedirect = async (baseUrl) => {
             url,
             parameter: param,
             message: `Confirmed Open Redirect via Location header`,
-            evidence: `Location: ${location}`
+            evidence: `Location: ${location}`,
+            proof: createProof({
+              type: 'OPEN_REDIRECT',
+              url,
+              method: 'GET',
+              payload: evilUrl,
+              request: { headers: res.request?.headers || {} },
+              response: { status: res.status, headers: res.headers, body: '' },
+              responseTime: 0,
+              evidence: `Location header redirects to: ${location}`
+            })
           });
         }
       }

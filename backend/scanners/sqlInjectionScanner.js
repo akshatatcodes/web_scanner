@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { generatePayloads } = require('../utils/payloadEngine');
-const SAFE_MODE = true; 
+const { createProof } = require('./proof/proofStore');
+const SAFE_MODE = true;
 
 const DB_ERRORS = [
     "SQL syntax", "mysql_fetch_array", "ORA-", "PostgreSQL",
@@ -53,7 +54,18 @@ const scanSQLi = async (targetUrls, scanContext = {}) => {
                                 severity: "CRITICAL",
                                 confidence: "Confirmed",
                                 parameter: key,
-                                message: `Database error exposed: ${foundError}`
+                                url: testUrl.toString(),
+                                message: `Database error exposed: ${foundError}`,
+                                proof: createProof({
+                                    type: 'SQL_INJECTION',
+                                    url: testUrl.toString(),
+                                    method: 'GET',
+                                    payload,
+                                    request: { headers: res.request?.headers || {} },
+                                    response: { status: res.status, headers: res.headers, body: body },
+                                    responseTime: 0,
+                                    evidence: `DB error string in response: "${foundError}"`
+                                })
                             });
                             dbErrorFound = true;
                             break; 
@@ -85,7 +97,18 @@ const scanSQLi = async (targetUrls, scanContext = {}) => {
                             severity: "HIGH",
                             confidence: "High Probability",
                             parameter: key,
-                            message: `Boolean-based SQLi detected (Status differential)`
+                            url: trueUrl.toString(),
+                            message: `Boolean-based SQLi detected (Status differential)`,
+                            proof: createProof({
+                                type: 'SQL_INJECTION',
+                                url: trueUrl.toString(),
+                                method: 'GET',
+                                payload: `${value} AND 1=1 / AND 1=2`,
+                                request: { headers: resTrue.request?.headers || {} },
+                                response: { status: resTrue.status, headers: resTrue.headers, body: typeof resTrue.data === 'string' ? resTrue.data : JSON.stringify(resTrue.data) },
+                                responseTime: 0,
+                                evidence: `Status diff: TRUE=${resTrue.status}, FALSE=${resFalse.status}, Baseline=${baselineRes.status}`
+                            })
                         });
                     } else if (Math.abs(trueL - baselineL) < 50 && Math.abs(trueL - falseL) > 100) {
                         findings.push({
@@ -93,7 +116,18 @@ const scanSQLi = async (targetUrls, scanContext = {}) => {
                             severity: "HIGH",
                             confidence: "Potential",
                             parameter: key,
-                            message: `Boolean-based SQLi detected (Length diff: True=${trueL}, False=${falseL})`
+                            url: trueUrl.toString(),
+                            message: `Boolean-based SQLi detected (Length diff: True=${trueL}, False=${falseL})`,
+                            proof: createProof({
+                                type: 'SQL_INJECTION',
+                                url: trueUrl.toString(),
+                                method: 'GET',
+                                payload: `${value} AND 1=1 / AND 1=2`,
+                                request: { headers: resTrue.request?.headers || {} },
+                                response: { status: resTrue.status, headers: resTrue.headers, body: typeof resTrue.data === 'string' ? resTrue.data : JSON.stringify(resTrue.data) },
+                                responseTime: 0,
+                                evidence: `Length diff: True=${trueL}, False=${falseL}, Baseline=${baselineL}`
+                            })
                         });
                     }
                 } catch(e) {}

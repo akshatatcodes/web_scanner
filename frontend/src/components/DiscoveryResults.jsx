@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import SecurityExplanation from './SecurityExplanation';
 import CrawlerInsights from './CrawlerInsights';
+import ProofModal from './ProofModal';
 
 const EXPLOIT_DETAILS = {
   SQL_INJECTION: {
@@ -48,6 +49,7 @@ const DiscoveryResults = ({
   waf = null
 }) => {
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [selectedProof, setSelectedProof] = useState(null);
 
   // Categorize JWT issues natively
   const jwtCritical = jwtIssues.filter(j => j.severity === 'CRITICAL');
@@ -153,13 +155,22 @@ const DiscoveryResults = ({
                         <div className="secret-matches">
                           <div className="secret-match-code">{issue.message}</div>
                           {issue.url && <div className="url-text" style={{fontSize:'0.75rem', marginTop:'0.3rem'}}>{issue.url}</div>}
-                          <button 
-                            className="learn-more-btn" 
-                            style={{marginTop: '0.8rem', fontSize: '0.7rem', opacity: 0.8}}
-                            onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.SQL_INJECTION })}
-                          >
-                            What is this?
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                            <button 
+                              className="learn-more-btn" 
+                              style={{fontSize: '0.7rem', opacity: 0.8}}
+                              onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.SQL_INJECTION })}
+                            >
+                              What is this?
+                            </button>
+                            {issue.proof && (
+                              <button
+                                className="learn-more-btn"
+                                style={{ fontSize: '0.7rem', background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                                onClick={() => setSelectedProof(issue.proof)}
+                              >🧪 View Proof</button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -179,13 +190,23 @@ const DiscoveryResults = ({
                         </div>
                         <div className="secret-matches">
                           <div className="secret-match-code">{issue.message}</div>
-                          <button 
-                            className="learn-more-btn" 
-                            style={{marginTop: '0.8rem', fontSize: '0.7rem', opacity: 0.8}}
-                            onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.COMMAND_INJECTION })}
-                          >
-                            What is this?
-                          </button>
+                          {issue.url && <div className="url-text" style={{fontSize:'0.75rem', marginTop:'0.3rem'}}>{issue.url}</div>}
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                            <button 
+                              className="learn-more-btn" 
+                              style={{fontSize: '0.7rem', opacity: 0.8}}
+                              onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.COMMAND_INJECTION })}
+                            >
+                              What is this?
+                            </button>
+                            {issue.proof && (
+                              <button
+                                className="learn-more-btn"
+                                style={{ fontSize: '0.7rem', background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                                onClick={() => setSelectedProof(issue.proof)}
+                              >🧪 View Proof</button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -244,13 +265,23 @@ const DiscoveryResults = ({
                         </div>
                         <div className="secret-matches">
                           <div className="secret-match-code">{issue.message}</div>
-                          <button 
-                            className="learn-more-btn" 
-                            style={{marginTop: '0.8rem', fontSize: '0.7rem', opacity: 0.8}}
-                            onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.IDOR_VULNERABILITY })}
-                          >
-                            What is this?
-                          </button>
+                          {issue.url && <div className="url-text" style={{fontSize:'0.75rem', marginTop:'0.3rem'}}>{issue.url}</div>}
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                            <button 
+                              className="learn-more-btn" 
+                              style={{fontSize: '0.7rem', opacity: 0.8}}
+                              onClick={() => setSelectedIssue({ details: EXPLOIT_DETAILS.IDOR_VULNERABILITY })}
+                            >
+                              What is this?
+                            </button>
+                            {issue.proof && (
+                              <button
+                                className="learn-more-btn"
+                                style={{ fontSize: '0.7rem', background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                                onClick={() => setSelectedProof(issue.proof)}
+                              >🧪 View Proof</button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -271,6 +302,13 @@ const DiscoveryResults = ({
                         <div className="secret-matches">
                           <div className="secret-match-code">{issue.message}</div>
                           <div className="url-text" style={{fontSize:'0.75rem', marginTop:'0.3rem'}}>{issue.url}</div>
+                          {issue.proof && (
+                            <button
+                              className="learn-more-btn"
+                              style={{ marginTop: '0.6rem', fontSize: '0.7rem', background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                              onClick={() => setSelectedProof(issue.proof)}
+                            >🧪 View Proof</button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -375,6 +413,13 @@ const DiscoveryResults = ({
                         </div>
                         <div className="secret-matches">
                           <div className="secret-match-code">{issue.evidence}</div>
+                          {issue.proof && (
+                            <button
+                              className="learn-more-btn"
+                              style={{ marginTop: '0.6rem', fontSize: '0.7rem', background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#f87171' }}
+                              onClick={() => setSelectedProof(issue.proof)}
+                            >🧪 View Proof</button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -443,9 +488,21 @@ const DiscoveryResults = ({
                   <h4 className="discovery-title"><span className="discovery-icon">🔗</span> SSRF Parameters</h4>
                   <div className="discovery-list">
                     {ssrfFindings.map((issue, idx) => (
-                      <div key={idx} className="discovery-item">
-                        <span className="discovery-value url-text">{issue.parameter} - {issue.message}</span>
-                        <span className={`risk-pill small ${getRiskClass(issue.severity)}`}>{issue.severity}</span>
+                      <div key={idx} className="discovery-item secret-item">
+                        <div className="secret-header">
+                          <span className="discovery-value url-text">?{issue.parameter}=</span>
+                          <span className={`risk-pill small ${getRiskClass(issue.severity)}`}>{issue.severity}</span>
+                        </div>
+                        <div className="secret-matches">
+                          <div className="secret-match-code" style={{fontSize:'0.78rem'}}>{issue.message}</div>
+                          {issue.proof && (
+                            <button
+                              className="learn-more-btn"
+                              style={{ marginTop: '0.6rem', fontSize: '0.7rem', background: 'rgba(59,130,246,0.12)', borderColor: 'rgba(59,130,246,0.4)', color: '#60a5fa' }}
+                              onClick={() => setSelectedProof(issue.proof)}
+                            >🧪 View Proof</button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -489,6 +546,9 @@ const DiscoveryResults = ({
           issue={selectedIssue} 
           onClose={() => setSelectedIssue(null)} 
         />
+      )}
+      {selectedProof && (
+        <ProofModal proof={selectedProof} onClose={() => setSelectedProof(null)} />
       )}
     </div>
   );

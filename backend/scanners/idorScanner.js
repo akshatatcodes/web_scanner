@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { createProof } = require('./proof/proofStore');
 const IGNORE_PARAMS = ["gtm", "fbclid", "utm_source", "utm_medium", "utm_campaign", "cx", "ga"];
 
 const SENSITIVE_KEYS = ["email", "username", "account", "balance", "credit", "role", "payment", "uuid", "token"];
@@ -50,7 +51,18 @@ const scanIDOR = async (targetUrls) => {
                                 severity: "HIGH",
                                 confidence: "Potential",
                                 parameter: key,
-                                message: `Access granted to manipulated numeric ID (Baseline: ${baselineRes.status}, Spoofed: 200)`
+                                url: testUrl.toString(),
+                                message: `Access granted to manipulated numeric ID (Baseline: ${baselineRes.status}, Spoofed: 200)`,
+                                proof: createProof({
+                                    type: 'IDOR',
+                                    url: testUrl.toString(),
+                                    method: 'GET',
+                                    payload: testUrl.searchParams.get(key),
+                                    request: { headers: res.request?.headers || {} },
+                                    response: { status: res.status, headers: res.headers, body: typeof res.data === 'string' ? res.data : JSON.stringify(res.data) },
+                                    responseTime: 0,
+                                    evidence: `Baseline status: ${baselineRes.status}, Spoofed to 200 for param '${key}'`
+                                })
                             });
                             continue;
                         }
@@ -72,7 +84,18 @@ const scanIDOR = async (targetUrls) => {
                                         severity: "HIGH",
                                         confidence: "Potential",
                                         parameter: key,
-                                        message: `JSON response differs structurally for manipulated ID (Sensitive keys present)`
+                                        url: testUrl.toString(),
+                                        message: `JSON response differs structurally for manipulated ID (Sensitive keys present)`,
+                                        proof: createProof({
+                                            type: 'IDOR',
+                                            url: testUrl.toString(),
+                                            method: 'GET',
+                                            payload: testUrl.searchParams.get(key),
+                                            request: { headers: res.request?.headers || {} },
+                                            response: { status: res.status, headers: res.headers, body: resString },
+                                            responseTime: 0,
+                                            evidence: `Sensitive keys exposed in JSON response after ID manipulation`
+                                        })
                                     });
                                 }
                             } else {

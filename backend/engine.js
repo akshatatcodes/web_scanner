@@ -59,7 +59,7 @@ async function run(url) {
         console.log(`[Engine] Phase 1 - Surface Discovery & Infrastructure Analysis: ${url}`);
         const [staticRes, dnsInfo, sslInfo] = await Promise.all([
             axios.get(url, {
-                timeout: 10000,
+                timeout: 30000,
                 validateStatus: null,
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
             }),
@@ -161,11 +161,12 @@ async function run(url) {
             safeRun(scanRateLimit, url)
         ]);
 
-        // 6. Phase 6: Exploitation Intelligence & Chained Attack Analysis
-        console.log(`[Engine] Phase 6 - Exploitation Intelligence & Chained Attack Analysis...`);
+        // 6. Phase 6 & 7: Exploitation Intelligence & Behavior-Based Detection
+        console.log(`[Engine] Phase 6 & 7 - Exploitation Intelligence & Behavior-Based Detection...`);
         const discoveredURLs = scanContext.endpoints.map(e => e.url);
+        const { runBehaviorAnalysis } = require('./scanners/behavior/behaviorAnalyzer');
 
-        const [sqli, cmdInjection, idors, jwtIssues] = await Promise.all([
+        const [sqli, cmdInjection, idors, jwtIssues, behaviorAnomalies] = await Promise.all([
             safeRun(scanSQLi, discoveredURLs, scanContext),
             safeRun(scanCommandInjection, discoveredURLs, scanContext),
             safeRun(scanIDOR, discoveredURLs, scanContext),
@@ -173,9 +174,10 @@ async function run(url) {
                 cookies: scanContext.cookies,
                 local: scanContext.storage.local,
                 session: scanContext.storage.session
-            })
+            }),
+            safeRun(runBehaviorAnalysis, discoveredURLs)
         ]);
-        console.log(`[Engine] Phase 6 complete. Target Endpoints Scanned: ${discoveredURLs.length}`);
+        console.log(`[Engine] Phase 6 & 7 complete. Target Endpoints Scanned: ${discoveredURLs.length}`);
 
         // URL Normalization for reputation check
         const normalizedUrl = new URL(url).origin;
@@ -234,7 +236,8 @@ async function run(url) {
             asn: asnData,
             cdnBypass: cdnBypassData,
             jsData: jsReconData,
-            githubData: githubReconData
+            githubData: githubReconData,
+            behaviorAnomalies: behaviorAnomalies ? behaviorAnomalies.anomalies : []
         });
 
         const domainIntel = {
@@ -357,6 +360,20 @@ async function run(url) {
         // 6. PRO Attack Graph Engine - Normalization & Analysis
         const findings = [];
         
+        // Normalize Behavior Anomalies (Phase 7)
+        if (behaviorAnomalies && behaviorAnomalies.anomalies && behaviorAnomalies.anomalies.length > 0) {
+            behaviorAnomalies.anomalies.forEach(anom => {
+                findings.push({ 
+                    type: 'behavioral_anomaly', 
+                    severity: anom.confidence === 'CRITICAL' ? 'CRITICAL' : (anom.confidence === 'HIGH' ? 'HIGH' : 'MEDIUM'), 
+                    evidence: `Behavioral engine confirmed ${anom.vulnerability} at ${new URL(anom.endpoint).pathname} (Confidence: ${anom.confidence})` 
+                });
+            });
+        }
+        
+        // Provide raw stats to frontend regardless of vulns
+        results.behaviorProfiling = behaviorAnomalies || { endpointsProfiled: 0, payloadsSent: 0, anomalies: [] };
+
         // Normalize SSRF
         if (ssrfFindings && ssrfFindings.length > 0) {
             findings.push({ 

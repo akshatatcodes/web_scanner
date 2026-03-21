@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { createProof } = require('./proof/proofStore');
 
 const SSRF_PARAMS = ["url", "dest", "webhook", "proxy", "uri", "path", "continue", "window"];
 
@@ -39,7 +40,17 @@ const scanSSRF = async (baseUrl) => {
           severity: "INFO",
           url,
           parameter: param,
-          message: `SSRF-prone parameter '${param}' accepts URL input without immediate error (Potential Vector)`
+          message: `SSRF-prone parameter '${param}' accepts URL input without immediate error (Potential Vector)`,
+          proof: createProof({
+            type: 'POTENTIAL_SSRF',
+            url,
+            method: 'GET',
+            payload: testUrl,
+            request: { headers: res.request?.headers || {} },
+            response: { status: res.status, headers: res.headers, body: typeof res.data === 'string' ? res.data : JSON.stringify(res.data) },
+            responseTime: 0,
+            evidence: `Status: ${res.status}, Baseline: ${baselineStatus}, Length diff: ${Math.abs((res.data ? res.data.length : 0) - baselineLength)}`
+          })
         });
       }
     } catch (err) {
@@ -49,7 +60,17 @@ const scanSSRF = async (baseUrl) => {
           severity: "MEDIUM",
           url: `${baseUrl}?${param}=${testUrl}`,
           parameter: param,
-          message: `SSRF-prone parameter '${param}' caused a timeout (Potential Blind SSRF delay)`
+          message: `SSRF-prone parameter '${param}' caused a timeout (Potential Blind SSRF delay)`,
+          proof: createProof({
+            type: 'POTENTIAL_SSRF',
+            url: `${baseUrl}?${param}=${testUrl}`,
+            method: 'GET',
+            payload: testUrl,
+            request: { headers: {} },
+            response: { status: 0, headers: {}, body: '' },
+            responseTime: 5000,
+            evidence: `Request timed out after 5000ms — potential blind SSRF`
+          })
         });
       }
     }

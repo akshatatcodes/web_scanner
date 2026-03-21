@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { createProof } = require('./proof/proofStore');
 
 const BYPASS_HEADERS = [
   { "X-Forwarded-For": "127.0.0.1" },
@@ -69,7 +70,17 @@ const scanAuthBypass = async (baseUrl, discoveredPaths = []) => {
                                         severity: "HIGH",
                                         url: targetUrl,
                                         message: `Authentication Bypass successful`,
-                                        evidence: `Header Injection: ${JSON.stringify(headers).replace(/[{}]/g, '')}`
+                                        evidence: `Header Injection: ${JSON.stringify(headers).replace(/[{}]/g, '')}`,
+                                        proof: createProof({
+                                            type: 'AUTH_BYPASS',
+                                            url: targetUrl,
+                                            method: 'GET',
+                                            payload: JSON.stringify(headerOpt),
+                                            request: { headers },
+                                            response: { status: spoofReq.status, headers: spoofReq.headers, body: spoofReq.data && typeof spoofReq.data === 'string' ? spoofReq.data : JSON.stringify(spoofReq.data) },
+                                            responseTime: 0,
+                                            evidence: `Baseline: ${baselineReq.status} (${baselineLength} bytes), Spoofed: ${spoofReq.status} (${spoofLength} bytes) using header: ${JSON.stringify(headerOpt)}`
+                                        })
                                     });
                                     break; 
                                 }

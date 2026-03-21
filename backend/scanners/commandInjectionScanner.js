@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { generatePayloads } = require('../utils/payloadEngine');
+const { createProof } = require('./proof/proofStore');
 const SAFE_MODE = true;
 
 const IGNORE_PARAMS = ["gtm", "fbclid", "utm_source", "utm_medium", "utm_campaign", "cx", "ga"];
@@ -58,9 +59,20 @@ const scanCommandInjection = async (targetUrls, scanContext = {}) => {
                             findings.push({
                                 type: "COMMAND_INJECTION",
                                 severity: "CRITICAL",
-                                confidence: "Confirmed", // Timing is hard to fake
+                                confidence: "Confirmed",
                                 parameter: key,
-                                message: `Time-based Command Injection (Delayed by ${duration}ms, Baseline: ${baselineDuration}ms)`
+                                url: testUrl.toString(),
+                                message: `Time-based Command Injection (Delayed by ${duration}ms, Baseline: ${baselineDuration}ms)`,
+                                proof: createProof({
+                                    type: 'COMMAND_INJECTION',
+                                    url: testUrl.toString(),
+                                    method: 'GET',
+                                    payload,
+                                    request: { headers: res.request?.headers || {} },
+                                    response: { status: res.status, headers: res.headers, body: body },
+                                    responseTime: duration,
+                                    evidence: `Time delay of ${duration}ms vs baseline ${baselineDuration}ms`
+                                })
                             });
                         }
 
@@ -73,7 +85,18 @@ const scanCommandInjection = async (targetUrls, scanContext = {}) => {
                                 severity: "CRITICAL",
                                 confidence: "Confirmed",
                                 parameter: key,
-                                message: `OS Command Execution output detected (Pattern: ${matchedPattern})`
+                                url: testUrl.toString(),
+                                message: `OS Command Execution output detected (Pattern: ${matchedPattern})`,
+                                proof: createProof({
+                                    type: 'COMMAND_INJECTION',
+                                    url: testUrl.toString(),
+                                    method: 'GET',
+                                    payload,
+                                    request: { headers: res.request?.headers || {} },
+                                    response: { status: res.status, headers: res.headers, body: body },
+                                    responseTime: duration,
+                                    evidence: `Pattern matched: ${matchedPattern}`
+                                })
                             });
                         }
                     } catch(e) {}

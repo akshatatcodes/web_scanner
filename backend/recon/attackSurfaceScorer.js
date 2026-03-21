@@ -66,6 +66,21 @@ const calculateScore = (intel) => {
         reasons.push(`Confirmed secrets/source code leaks on GitHub (${intel.githubData.totalCount} matches)`);
     }
 
+    // 8. Behavioral Exploitation Confirmations
+    if (intel.behaviorAnomalies && intel.behaviorAnomalies.length > 0) {
+        let maxVulnScore = 0;
+        intel.behaviorAnomalies.forEach(anom => {
+            if (anom.confidence === "CRITICAL") maxVulnScore = Math.max(maxVulnScore, 80);
+            if (anom.confidence === "HIGH") maxVulnScore = Math.max(maxVulnScore, 50);
+            if (anom.confidence === "LOW") maxVulnScore = Math.max(maxVulnScore, 15);
+        });
+        
+        if (maxVulnScore > 0) {
+            score += maxVulnScore;
+            reasons.push(`Behavioral exploiting confirmed active vulnerabilities! (+${maxVulnScore} Risk)`);
+        }
+    }
+
     // Cap at 100 for percentage scale
     const finalScore = Math.min(score, 100);
 
