@@ -1,4 +1,5 @@
 const net = require('net');
+const attackLogger = require('../utils/attackLogger');
 
 /**
  * Common Ports Mapping
@@ -63,6 +64,11 @@ async function scan(host) {
                 service: PORT_SERVICES[r.port] || 'Unknown Service',
                 status: 'open'
             }));
+
+        if (openPorts.length > 0) {
+            const portList = openPorts.map(p => p.port).join(', ');
+            attackLogger.log({ type: 'INFO', scanner: 'PortScanner', target: host, result: `Open ports found: ${portList}` });
+        }
 
         console.log(`[Port Scanner] Found ${openPorts.length} open ports.`);
         return openPorts;

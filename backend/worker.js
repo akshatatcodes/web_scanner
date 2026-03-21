@@ -39,7 +39,9 @@ const worker = new Worker(
   },
   { 
       connection, 
-      concurrency: 5 
+      concurrency: 5,
+      lockDuration: 60000,   // Increase to 60s
+      lockRenewTime: 20000   // Renew every 20s
   }
 );
 

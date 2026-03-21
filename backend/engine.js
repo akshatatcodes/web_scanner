@@ -25,6 +25,8 @@ const { scanGraphQL } = require('./scanners/graphqlScanner');
 const { scanOpenRedirect } = require('./scanners/openRedirectScanner');
 const { scanSSRF } = require('./scanners/ssrfScanner');
 const { scanAuthBypass } = require('./scanners/authBypassScanner');
+const { analyzeAttackGraph } = require('./utils/attackGraph');
+const attackLogger = require('./utils/attackLogger');
 const { scanRateLimit } = require('./scanners/rateLimitScanner');
 const { scanSQLi } = require('./scanners/sqlInjectionScanner');
 const { scanCommandInjection } = require('./scanners/commandInjectionScanner');
@@ -57,21 +59,31 @@ async function run(url) {
 
         // 1. Phase 1: Surface Discovery & Infrastructure Analysis
         console.log(`[Engine] Phase 1 - Surface Discovery & Infrastructure Analysis: ${url}`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 1 - Initializing Infrastructure Scan...' });
         const [staticRes, dnsInfo, sslInfo] = await Promise.all([
             axios.get(url, {
-                timeout: 30000,
+                timeout: 60000,
                 validateStatus: null,
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
             }),
-            dnsScanner.scan(domain),
-            sslScanner.scan(url)
+            dnsScanner.scan(domain).catch(e => {
+                attackLogger.log({ type: 'ERROR', scanner: 'DNS', url: domain, result: `DNS scan failed: ${e.message}` });
+                return { error: e.message };
+            }),
+            sslScanner.scan(domain).catch(e => {
+                attackLogger.log({ type: 'ERROR', scanner: 'SSL', url: domain, result: `SSL scan failed: ${e.message}` });
+                return { error: e.message };
+            })
         ]);
+
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: `Phase 1 Complete. Status: ${staticRes?.status || 'ERR'}` });
 
         const staticHeaders = staticRes.headers;
         const staticHtml = staticRes.data;
 
         // 1.5 Phase 1.5: WAF Profiling & Infrastructure Intelligence
         console.log(`[Engine] Phase 1.5 - WAF Profiling & Infrastructure Intelligence...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 1.5 - WAF Profiling started' });
         const { detectWaf } = require('./scanners/wafScanner');
         const wafResults = await detectWaf(url);
         
@@ -85,11 +97,13 @@ async function run(url) {
 
         // Phase 2: Fast Static Extraction (cheerio-based, no Puppeteer)
         console.log(`[Engine] Phase 2 - Fast Static Extraction (Puppeteer crawl available on-demand)...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 2 - Static Extraction started' });
         const scanContext = buildStaticScanContext(url, staticHtml, staticHeaders);
         scanContext.waf = wafResults;
         
         // 3. Phase 3: Technology Fingerprinting & Security Pattern Analysis
         console.log(`[Engine] Phase 3 - Technology Fingerprinting & Security Pattern Analysis...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 3 - Technology Fingerprinting started' });
         
         // Prepare data for tech scanner from static HTML results
         // Use scripts from static context; provide safe defaults for meta/links/jsVariables
@@ -126,6 +140,7 @@ async function run(url) {
 
         // 4. Phase 4: Security Vulnerability and Headers
         console.log(`[Engine] Phase 4 - Multi-Vector Vulnerability Discovery & Header Analysis...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 4 - Vulnerability Discovery started' });
         const [vulnerabilities, securityHeaders, rawCookieSecurity, rawSuspiciousScripts] = await Promise.all([
             vulnerabilityScanner.scanAll(detectedTechnologies),
             headerScanner.scan(url),
@@ -152,6 +167,7 @@ async function run(url) {
 
         // 5. Phase 5: Authorization Bypass & Resilience Testing
         console.log(`[Engine] Phase 5 - Authorization Bypass & Resilience Testing...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 5 - Authorization Bypass started' });
         const discoveredPaths = scanContext.endpoints.map(e => {
             try { return new URL(e.url).pathname } catch { return e.url }
         });
@@ -163,6 +179,7 @@ async function run(url) {
 
         // 6. Phase 6 & 7: Exploitation Intelligence & Behavior-Based Detection
         console.log(`[Engine] Phase 6 & 7 - Exploitation Intelligence & Behavior-Based Detection...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 6 & 7 - Exploitation Intelligence started' });
         const discoveredURLs = scanContext.endpoints.map(e => e.url);
         const { runBehaviorAnalysis } = require('./scanners/behavior/behaviorAnalyzer');
 
@@ -183,6 +200,8 @@ async function run(url) {
         const normalizedUrl = new URL(url).origin;
 
         // 5. Advanced OSINT & Infrastructure (Reputation, Subdomains)
+        console.log(`[Engine] Phase 5 - Advanced OSINT & Infrastructure (Reputation, Subdomains)...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 5 - OSINT & Infrastructure started' });
         const [reputationResult, subdomainList] = await Promise.all([
             domainReputationScanner.scan(normalizedUrl),
             subdomainScanner.scan(domain)
@@ -190,6 +209,7 @@ async function run(url) {
 
         // Phase 6A - Core Recon Layer (Hacker Heuristics)
         console.log(`[Engine] Phase 6A - Core Recon Layer (Subdomain Intel, Takeovers, Wayback)...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 6A - Core Recon Layer started' });
         const limit = pLimit(10); // Safe limit for DNS/HTTP takeover checks
         const takeoverResults = await Promise.all(
             subdomainList.map(sub => limit(() => checkTakeover(sub)))
@@ -210,6 +230,7 @@ async function run(url) {
 
         // Phase 6B - Infrastructure Exploitation Layer
         console.log(`[Engine] Phase 6B - Infrastructure Layer (ASN Pivoting, CDN Bypass)...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 6B - Infrastructure Exploitation started' });
         const { parseAsn } = require('./recon/asnPivot');
         const { checkCdnBypass } = require('./recon/cdnBypass');
         
@@ -222,6 +243,7 @@ async function run(url) {
 
         // Phase 6C - Deep Leak & Intelligence Mining
         console.log(`[Engine] Phase 6C - Intelligence Mining (JS Analyzer, GitHub Leaks)...`);
+        attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 6C - Deep Leak & Intelligence Mining started' });
         const { analyzeJS } = require('./recon/jsAnalyzer');
         const { searchGithubLeaks } = require('./recon/githubLeaks');
         const [jsReconData, githubReconData] = await Promise.all([

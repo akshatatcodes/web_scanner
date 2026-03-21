@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { createProof } = require('./proof/proofStore');
+const attackLogger = require('../utils/attackLogger');
 
 const BYPASS_HEADERS = [
   { "X-Forwarded-For": "127.0.0.1" },
@@ -60,11 +61,15 @@ const scanAuthBypass = async (baseUrl, discoveredPaths = []) => {
                                 maxRedirects: 0
                             });
 
+                            attackLogger.log({ type: 'SEND', scanner: 'AuthBypass', url: targetUrl, payload: JSON.stringify(headerOpt) });
+                            attackLogger.log({ type: 'RECV', scanner: 'AuthBypass', url: targetUrl, status: spoofReq.status });
+                            
                             if (spoofReq.status === 200) {
                                 const spoofLength = spoofReq.data ? (typeof spoofReq.data === 'string' ? spoofReq.data.length : JSON.stringify(spoofReq.data).length) : 0;
                                 const bodyText = spoofReq.data && typeof spoofReq.data === 'string' ? spoofReq.data.toLowerCase() : '';
 
                                 if (Math.abs(spoofLength - baselineLength) > 100 || ['admin', 'dashboard', 'welcome', 'logout', 'settings'].some(k => bodyText.includes(k))) {
+                                    attackLogger.log({ type: 'FOUND', scanner: 'AuthBypass', url: targetUrl, payload: JSON.stringify(headerOpt), severity: 'HIGH', result: `Bypass via ${Object.keys(headerOpt)[0]}` });
                                     findings.push({
                                         type: "AUTH_BYPASS",
                                         severity: "HIGH",

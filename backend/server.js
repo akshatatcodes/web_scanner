@@ -6,7 +6,13 @@ const { deepCrawl } = require('./engine');
 const mongoose = require('mongoose');
 const { scanQueue } = require('./queue');
 const { Job } = require('bullmq');
+const attackLogger = require('./utils/attackLogger');
+const aiService = require('./services/aiService');
+const reportGenerator = require('./utils/reportGenerator');
+const persistence = require('./utils/persistence');
 require('./worker'); // start the worker
+
+
 
 
 
@@ -136,6 +142,100 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
+app.post('/api/ai/analyze', async (req, res) => {
+    const { finding } = req.body;
+    if (!finding) return res.status(400).json({ error: 'Finding is required' });
+
+    try {
+        const analysis = await aiService.analyze(finding);
+        res.json(analysis);
+    } catch (error) {
+        console.error('AI Analysis error:', error.message);
+        res.status(500).json({ error: 'AI Layer failed to process the finding.' });
+    }
+});
+
+// Server-Sent Events: Live Attack Console
+
+app.get('/api/attack-stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.flushHeaders();
+
+  // Send a heartbeat every 15s to keep connection alive
+  const heartbeat = setInterval(() => {
+    res.write('event: heartbeat\ndata: {}\n\n');
+  }, 15000);
+
+  // Forward attack log events to this SSE client
+  const onLog = (entry) => {
+    res.write(`data: ${JSON.stringify(entry)}\n\n`);
+  };
+
+  attackLogger.on('attack-log', onLog);
+
+  // Cleanup when client disconnects
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    attackLogger.off('attack-log', onLog);
+  });
+});
+
+// Report Generation Endpoint
+app.get('/api/reports/:format/:jobId', async (req, res) => {
+    const { format, jobId } = req.params;
+
+    if (!['pdf', 'html'].includes(format)) {
+        return res.status(400).json({ error: 'Invalid format. Use "pdf" or "html".' });
+    }
+
+    try {
+        // 1. Check if report already exists on disk (cache)
+        const existingPath = await persistence.getReport(jobId, format);
+        if (existingPath) {
+            console.log(`[Reports] Serving cached report for job: ${jobId}`);
+            return res.sendFile(existingPath);
+        }
+
+        // 2. Retrieve job and results
+        const job = await Job.fromId(scanQueue, jobId);
+        if (!job) return res.status(404).json({ error: 'Job not found' });
+
+        const state = await job.getState();
+        if (state !== 'completed') {
+            return res.status(400).json({ error: `Report cannot be generated. Job status: ${state}` });
+        }
+
+        const results = job.returnvalue;
+        if (!results) return res.status(404).json({ error: 'Scan results not found for this job' });
+
+        // 3. Generate Report
+        let content;
+        if (format === 'html') {
+            content = reportGenerator.generateHtml(results);
+            res.setHeader('Content-Type', 'text/html');
+        } else {
+            console.log(`[Reports] Generating PDF for job: ${jobId}...`);
+            content = await reportGenerator.generatePdf(results);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="Security_Report_${jobId}.pdf"`);
+        }
+
+        // 4. Save to disk (persistence)
+        await persistence.saveReport(jobId, format, content);
+
+        // 5. Send response
+        res.send(content);
+
+    } catch (error) {
+        console.error('[Reports] Error generating report:', error.message);
+        res.status(500).json({ error: 'Internal server error during report generation.' });
+    }
+});
+
 app.listen(PORT, () => {
   console.log(`Web Security Exposure Analyzer backend running on http://localhost:${PORT}`);
 });
+

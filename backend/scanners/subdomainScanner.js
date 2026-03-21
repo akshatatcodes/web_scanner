@@ -1,4 +1,5 @@
 const axios = require('axios');
+const attackLogger = require('../utils/attackLogger');
 
 /**
  * Passive Subdomain Enumeration Module
@@ -27,7 +28,9 @@ async function scan(domain) {
             });
         });
 
-        const results = Array.from(subdomains).sort();
+        const found = Array.from(subdomains);
+        attackLogger.log({ type: 'INFO', scanner: 'Recon', url: domain, result: `Found ${found.length} subdomains: ${found.join(', ')}` });
+        const results = found.sort();
         console.log(`[Subdomain Scanner] Found ${results.length} subdomains.`);
         return results;
 

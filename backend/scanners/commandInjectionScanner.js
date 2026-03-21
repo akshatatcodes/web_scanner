@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { generatePayloads } = require('../utils/payloadEngine');
 const { createProof } = require('./proof/proofStore');
+const attackLogger = require('../utils/attackLogger');
 const SAFE_MODE = true;
 
 const IGNORE_PARAMS = ["gtm", "fbclid", "utm_source", "utm_medium", "utm_campaign", "cx", "ga"];
@@ -53,9 +54,13 @@ const scanCommandInjection = async (targetUrls, scanContext = {}) => {
                         const duration = Date.now() - start;
                         const body = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 
+                        attackLogger.log({ type: 'SEND', scanner: 'CmdInj', url: testUrl.toString(), payload });
+                        attackLogger.log({ type: 'RECV', scanner: 'CmdInj', url: testUrl.toString(), status: res.status, result: `${duration}ms` });
+
                         // 1. Time-based Confirmation (Confidence: HIGH)
                         if (payload.includes('sleep 2') && duration > (baselineDuration + 1800)) {
                             seen.add(findKey);
+                            attackLogger.log({ type: 'FOUND', scanner: 'CmdInj', url: testUrl.toString(), payload, severity: 'CRITICAL', result: `Time-based RCE: ${duration}ms delay` });
                             findings.push({
                                 type: "COMMAND_INJECTION",
                                 severity: "CRITICAL",
@@ -80,6 +85,7 @@ const scanCommandInjection = async (targetUrls, scanContext = {}) => {
                         const matchedPattern = CMD_REGEX_PATTERNS.find(p => p.test(body));
                         if (matchedPattern && !matchedPattern.test(baselineBody)) {
                             seen.add(findKey);
+                            attackLogger.log({ type: 'FOUND', scanner: 'CmdInj', url: testUrl.toString(), payload, severity: 'CRITICAL', result: `Output match: ${matchedPattern}` });
                             findings.push({
                                 type: "COMMAND_INJECTION",
                                 severity: "CRITICAL",

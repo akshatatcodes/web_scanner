@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { generatePayloads } = require('../utils/payloadEngine');
 const { createProof } = require('./proof/proofStore');
+const attackLogger = require('../utils/attackLogger');
 const SAFE_MODE = true;
 
 const DB_ERRORS = [
@@ -44,11 +45,14 @@ const scanSQLi = async (targetUrls, scanContext = {}) => {
                     try {
                         const res = await axios.get(testUrl.toString(), { timeout: 5000, validateStatus: () => true });
                         const body = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+                        attackLogger.log({ type: 'SEND', scanner: 'SQLi', url: testUrl.toString(), payload });
+                        attackLogger.log({ type: 'RECV', scanner: 'SQLi', url: testUrl.toString(), status: res.status });
                         
                         // Error MUST not be in baseline
                         const foundError = DB_ERRORS.find(err => body.includes(err) && !baselineBody.includes(err));
                         if (foundError) {
                             seen.add(findKey);
+                            attackLogger.log({ type: 'FOUND', scanner: 'SQLi', url: testUrl.toString(), payload, severity: 'CRITICAL', result: `DB error: ${foundError}` });
                             findings.push({
                                 type: "SQL_INJECTION",
                                 severity: "CRITICAL",

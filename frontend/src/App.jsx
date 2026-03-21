@@ -9,6 +9,7 @@ import PortScanResults from './components/PortScanResults';
 import DiscoveryResults from './components/DiscoveryResults';
 import AttackChainView from './components/AttackChainView';
 import ReconDashboard from './components/ReconDashboard';
+import AttackConsole from './components/AttackConsole';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -67,6 +68,7 @@ function App() {
   const [crawlContext, setCrawlContext] = useState(null);
   const [jobProgress, setJobProgress] = useState(0);
   const [jobMessage, setJobMessage] = useState('');
+  const [currentJobId, setCurrentJobId] = useState(null);
 
   const pollJobStatus = async (jobId, onComplete, onError, onProgress) => {
     try {
@@ -118,6 +120,7 @@ function App() {
     try {
       const response = await axios.post(`${API_BASE}/scan`, { url: targetUrl });
       const { jobId } = response.data;
+      setCurrentJobId(jobId);
       
       await pollJobStatus(jobId, 
         (finalResult) => {
@@ -242,6 +245,9 @@ function App() {
           </form>
         </div>
 
+        {/* Live Attack Console */}
+        <AttackConsole isActive={loading} />
+
         {error && <div className="error-message glass-panel" style={{ color: 'var(--danger)', marginTop: '1rem' }}>{error}</div>}
 
         {loading && (
@@ -319,6 +325,26 @@ function App() {
                     <span className="status-badge success">✅ Deep Crawl Done</span>
                   )}
                   {deepCrawlError && <span style={{ color: 'var(--danger)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{deepCrawlError}</span>}
+                </div>
+                
+                {/* Download Report Buttons */}
+                <div className="meta-item download-actions">
+                  <div className="btn-group">
+                    <button 
+                      className="btn-secondary" 
+                      onClick={() => window.open(`${API_BASE}/reports/pdf/${currentJobId}`, '_blank')}
+                      title="Download full professional PDF report"
+                    >
+                      📄 Download PDF
+                    </button>
+                    <button 
+                      className="btn-secondary" 
+                      onClick={() => window.open(`${API_BASE}/reports/html/${currentJobId}`, '_blank')}
+                      title="Open interactive HTML report"
+                    >
+                      🌐 HTML
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

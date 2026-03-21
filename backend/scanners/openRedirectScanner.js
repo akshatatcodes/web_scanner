@@ -1,4 +1,5 @@
 const axios = require('axios');
+const attackLogger = require('../utils/attackLogger');
 const { createProof } = require('./proof/proofStore');
 
 const REDIRECT_PARAMS = ["next", "url", "redirect", "returnTo", "target", "r", "goto"];
@@ -12,12 +13,14 @@ const scanOpenRedirect = async (baseUrl) => {
       const separator = baseUrl.includes('?') ? '&' : '?';
       const url = `${baseUrl}${separator}${param}=${evilUrl}`;
 
+      attackLogger.log({ type: 'SEND', scanner: 'OpenRedirect', url: url, payload: evilUrl });
       const res = await axios.get(url, {
         timeout: 5000,
         maxRedirects: 0, // IMPORTANT: Do not follow redirects
         validateStatus: () => true,
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Scanner' }
       });
+      attackLogger.log({ type: 'RECV', scanner: 'OpenRedirect', url: url, status: res.status });
 
       if ([301, 302, 307, 308].includes(res.status)) {
         const location = res.headers.location;

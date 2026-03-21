@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { createProof } = require('./proof/proofStore');
+const attackLogger = require('../utils/attackLogger');
 const IGNORE_PARAMS = ["gtm", "fbclid", "utm_source", "utm_medium", "utm_campaign", "cx", "ga"];
 
 const SENSITIVE_KEYS = ["email", "username", "account", "balance", "credit", "role", "payment", "uuid", "token"];
@@ -42,9 +43,12 @@ const scanIDOR = async (targetUrls) => {
                     testUrl.searchParams.set(key, parseInt(value) + 1);
 
                     try {
-                        const res = await axios.get(testUrl.toString(), { timeout: 5000, validateStatus: () => true });
+                        attackLogger.log({ type: 'SEND', scanner: 'IDOR', url: testUrl.toString(), payload: testUrl.searchParams.get(key) });
+                        const res = await axios.get(testUrl.toString(), { timeout: 3000, validateStatus: () => true });
+                        attackLogger.log({ type: 'RECV', scanner: 'IDOR', url: testUrl.toString(), status: res.status });
 
-                        if (res.status === 200 && baselineRes.status !== 200) {
+                        if (res.status === 200 && baselineStatus !== 200) {
+                            attackLogger.log({ type: 'FOUND', scanner: 'IDOR', url: testUrl.toString(), payload: testUrl.searchParams.get(key), severity: 'HIGH', result: `Status change (${baselineStatus}->200)` });
                             seen.add(findKey);
                             findings.push({
                                 type: "IDOR",

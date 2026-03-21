@@ -1,4 +1,5 @@
 const axios = require('axios');
+const attackLogger = require('../utils/attackLogger');
 const { createProof } = require('./proof/proofStore');
 
 const SSRF_PARAMS = ["url", "dest", "webhook", "proxy", "uri", "path", "continue", "window"];
@@ -11,14 +12,18 @@ const scanSSRF = async (baseUrl) => {
   let baselineStatus = 404;
   let baselineLength = 0;
   try {
+     attackLogger.log({ type: 'SEND', scanner: 'SSRF', url: baseUrl, payload: 'Baseline request' });
      const baseRes = await axios.get(baseUrl, { 
        timeout: 5000, 
        validateStatus: () => true,
        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Scanner' }
      });
+     attackLogger.log({ type: 'RECV', scanner: 'SSRF', url: baseUrl, status: baseRes.status });
      baselineStatus = baseRes.status;
      baselineLength = baseRes.data ? baseRes.data.length : 0;
-  } catch (e) {}
+  } catch (e) {
+    attackLogger.log({ type: 'ERROR', scanner: 'SSRF', url: baseUrl, error: e.message });
+  }
 
   for (const param of SSRF_PARAMS) {
     try {
