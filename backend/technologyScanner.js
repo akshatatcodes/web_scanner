@@ -71,7 +71,8 @@ class TechDetector {
             // 3. Scripts
             const scriptPatterns = tech.script || tech.scriptSrc;
             if (scriptPatterns) {
-                if (check(scriptPatterns, scripts.join(' '))) isMatch = true;
+                const scriptData = scripts.map(s => s.src || s.content || '').join(' ');
+                if (check(scriptPatterns, scriptData)) isMatch = true;
             }
 
             // 4. DOM
@@ -137,6 +138,7 @@ class TechDetector {
                     name,
                     version: currentVersion || undefined,
                     icon: tech.icon,
+                    cpe: tech.cpe,
                     categories: tech.cats.map(id => this.categories[id]?.name || 'Misc')
                 });
             }
