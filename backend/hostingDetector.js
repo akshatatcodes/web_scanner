@@ -2,7 +2,8 @@
  * Hosting Provider Detector
  */
 async function detect(dnsData, headerData) {
-    const ip = dnsData.ip ? dnsData.ip.join(' ') : '';
+    const records = dnsData.records || {};
+    const ip = records.A ? records.A.join(' ') : '';
     const server = (headerData.server || '').toLowerCase();
 
     // Expanded IP-based and Header-based logic
@@ -22,9 +23,9 @@ async function detect(dnsData, headerData) {
     if (server.includes('nginx')) return 'Nginx Web Server';
     if (server.includes('litespeed')) return 'LiteSpeed Web Server';
 
-    if (dnsData.mx && dnsData.mx.some(m => m.includes('google.com'))) return 'Google Workspace (Mail)';
-    if (dnsData.mx && dnsData.mx.some(m => m.includes('outlook.com'))) return 'Microsoft 365 (Mail)';
-    if (dnsData.mx && dnsData.mx.some(m => m.includes('secureserver.net'))) return 'GoDaddy';
+    if (records.MX && records.MX.some(m => m.toLowerCase().includes('google.com'))) return 'Google Workspace (Mail)';
+    if (records.MX && records.MX.some(m => m.toLowerCase().includes('outlook.com'))) return 'Microsoft 365 (Mail)';
+    if (records.MX && records.MX.some(m => m.toLowerCase().includes('secureserver.net'))) return 'GoDaddy';
 
     return 'Unknown Provider';
 }

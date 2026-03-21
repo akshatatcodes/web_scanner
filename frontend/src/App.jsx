@@ -5,8 +5,10 @@ import CookieSecurity from './components/CookieSecurity';
 import SuspiciousScripts from './components/SuspiciousScripts';
 import DomainIntelligence from './components/DomainIntelligence';
 import PortScanResults from './components/PortScanResults';
-import MonitoringPanel from './components/MonitoringPanel';
+
 import DiscoveryResults from './components/DiscoveryResults';
+import AttackChainView from './components/AttackChainView';
+import ReconDashboard from './components/ReconDashboard';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -59,6 +61,10 @@ function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [selectedTechVulns, setSelectedTechVulns] = useState(null);
+  const [deepCrawling, setDeepCrawling] = useState(false);
+  const [deepCrawlDone, setDeepCrawlDone] = useState(false);
+  const [deepCrawlError, setDeepCrawlError] = useState('');
+  const [crawlContext, setCrawlContext] = useState(null);
 
   const handleScan = async (e) => {
     e.preventDefault();
@@ -67,6 +73,9 @@ function App() {
     setLoading(true);
     setError('');
     setResults(null);
+    setDeepCrawlDone(false);
+    setDeepCrawlError('');
+    setCrawlContext(null);
 
     let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
@@ -78,6 +87,21 @@ function App() {
       setError(err.response?.data?.error || err.message || 'Failed to scan the target.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeepCrawl = async () => {
+    if (!results) return;
+    setDeepCrawling(true);
+    setDeepCrawlError('');
+    try {
+      const response = await axios.post(`${API_BASE}/deep-crawl`, { url: results.url });
+      setCrawlContext(response.data.scanContext);
+      setDeepCrawlDone(true);
+    } catch (err) {
+      setDeepCrawlError(err.response?.data?.error || 'Deep crawl failed.');
+    } finally {
+      setDeepCrawling(false);
     }
   };
 
@@ -130,12 +154,7 @@ function App() {
           >
             🔍 Security Scanner
           </button>
-          <button 
-            className={`nav-tab ${activeTab === 'monitor' ? 'active' : ''}`}
-            onClick={() => setActiveTab('monitor')}
-          >
-            ⏱️ Automated Monitoring
-          </button>
+
         </div>
 
         {activeTab === 'scan' && (
@@ -220,10 +239,34 @@ function App() {
                     {new Date(results.timestamp).toLocaleString()}
                   </span>
                 </div>
+                <div className="meta-item" style={{ marginLeft: 'auto' }}>
+                  {!deepCrawlDone ? (
+                    <button
+                      className="btn-deep-crawl"
+                      onClick={handleDeepCrawl}
+                      disabled={deepCrawling}
+                      title="Run full Puppeteer-based crawl for deeper endpoint discovery"
+                    >
+                      {deepCrawling ? (
+                        <><span className="btn-spinner" />Crawling...</>
+                      ) : (
+                        <>🕷️ Deep Crawl</>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="status-badge success">✅ Deep Crawl Done</span>
+                  )}
+                  {deepCrawlError && <span style={{ color: 'var(--danger)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{deepCrawlError}</span>}
+                </div>
               </div>
             </div>
 
             <div className="results-grid">
+              {/* Recon Hacker OSINT Dashboard - Top Priority */}
+              <ReconDashboard domainIntel={results.domainIntel} />
+              {/* Attack Chains - High Priority */}
+              <AttackChainView chains={results.attackChains} />
+
               {/* Suspicious Scripts - Full Width */}
               <SuspiciousScripts scripts={results.suspiciousScripts} />
 
@@ -252,6 +295,8 @@ function App() {
                 cmdInjection={results.cmdInjection}
                 idors={results.idors}
                 jwtIssues={results.jwtIssues}
+                scanContext={crawlContext || results.scanContext}
+                waf={results.waf}
               />
 
               {/* Infrastructure & Security cards */}
@@ -368,7 +413,7 @@ function App() {
           </>
         )}
 
-        {activeTab === 'monitor' && <MonitoringPanel />}
+
       </main>
 
       {/* Vulnerability Modal */}

@@ -2,9 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { scanUrl } = require('./scanner');
+const { deepCrawl } = require('./engine');
 const mongoose = require('mongoose');
-const monitorRoutes = require('./routes/monitorRoutes');
-const { startMonitoring } = require('./services/monitorService');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,12 +21,11 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/web-scanne
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log('[Database] Connected to MongoDB');
-    startMonitoring(); // Start background scheduler only after DB connects
+
   })
   .catch(err => console.error('[Database] MongoDB connection error:', err));
 
 // Routes
-app.use('/api/monitor', monitorRoutes);
 
 app.post('/api/scan', async (req, res) => {
   const { url } = req.body;
@@ -66,6 +65,19 @@ app.post('/api/scan-ports', async (req, res) => {
   } catch (error) {
     console.error('Port Scan error:', error.message);
     res.status(500).json({ error: 'Failed to scan ports.' });
+  }
+});
+
+app.post('/api/deep-crawl', async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL is required' });
+  try {
+    const targetUrl = new URL(url.startsWith('http') ? url : `http://${url}`);
+    const scanContext = await deepCrawl(targetUrl.href);
+    res.json({ scanContext });
+  } catch (error) {
+    console.error('Deep crawl error:', error.message);
+    res.status(500).json({ error: 'Deep crawl failed.' });
   }
 });
 

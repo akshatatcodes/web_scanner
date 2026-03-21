@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SecurityExplanation from './SecurityExplanation';
+import CrawlerInsights from './CrawlerInsights';
 
 const EXPLOIT_DETAILS = {
   SQL_INJECTION: {
@@ -42,7 +43,9 @@ const DiscoveryResults = ({
   sqli = [],
   cmdInjection = [],
   idors = [],
-  jwtIssues = []
+  jwtIssues = [],
+  scanContext = null,
+  waf = null
 }) => {
   const [selectedIssue, setSelectedIssue] = useState(null);
 
@@ -55,8 +58,10 @@ const DiscoveryResults = ({
   const hasHighRisk = authBypasses.length > 0 || secretLeaks.length > 0 || adminPanels.length > 0 || idors.length > 0 || jwtHigh.length > 0;
   const hasMediumRisk = corsIssues.length > 0 || graphqlFindings.length > 0 || openRedirects.length > 0 || jwtMediumLow.length > 0;
   const hasInfo = rateLimits.length > 0 || ssrfFindings.length > 0 || hiddenEndpoints.length > 0 || directories.length > 0;
+  const hasDiscovery = scanContext && scanContext.endpoints?.length > 0;
+  const hasWaf = waf && waf.detected;
 
-  if (!hasCritical && !hasHighRisk && !hasMediumRisk && !hasInfo) return null;
+  if (!hasCritical && !hasHighRisk && !hasMediumRisk && !hasInfo && !hasDiscovery && !hasWaf) return null;
 
   const getRiskClass = (severity) => {
     switch (severity?.toUpperCase()) {
@@ -84,6 +89,48 @@ const DiscoveryResults = ({
           <span className="category-icon">🛡️</span>
           <h3 className="result-title">Active Exploitation & Vulnerability Analysis</h3>
         </div>
+
+        {/* ELITE Crawler Insights */}
+        {scanContext && <CrawlerInsights scanContext={scanContext} />}
+
+        {/* WAF Detection & Evasion Status */}
+        {waf && waf.detected && (
+          <div className="risk-section waf-dashboard" style={{ marginBottom: '2.5rem' }}>
+            <h4 style={{ color: '#8b5cf6', borderBottom: '1px solid rgba(139, 92, 246, 0.4)', paddingBottom: '0.8rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+              <span style={{ fontSize: '1.4rem' }}>🛡️</span> Defense Infrastructure
+            </h4>
+            <div className="glass-panel" style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)', padding: '1.5rem', borderRadius: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                <div className="waf-stat">
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>PROTECTOR</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#a78bfa' }}>{waf.name}</div>
+                </div>
+                <div className="waf-stat">
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>CONFIDENCE</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(waf.confidence * 100).toFixed(0)}%</div>
+                </div>
+                <div className="waf-stat">
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>EVASION STRATEGY</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ color: '#10b981', fontSize: '1.2rem' }}>⚡</span>
+                    <span style={{ fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#10b981' }}>{waf.evasionStrategy?.replace('_', ' ') || 'ACTIVE'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>DETECTED SIGNALS</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {waf.signals?.map((sig, i) => (
+                    <span key={i} style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                      {sig}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CRITICAL SECTION */}
         {hasCritical && (
