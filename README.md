@@ -174,5 +174,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Developed by <b>Akshat</b>
+  Developed by <b>Akshat Jain</b>
 </p>
