@@ -17,9 +17,21 @@ const getBaseline = async (url, method = 'GET') => {
 
     if (!res) return null;
 
+    let responseLength = 0;
+    if (res.data) {
+        if (typeof res.data === 'string') responseLength = res.data.length;
+        else if (Buffer.isBuffer(res.data)) responseLength = res.data.length;
+        else if (typeof res.data === 'object' && res.data !== null) {
+            // Heuristic for objects to avoid heavy JSON.stringify
+            responseLength = Object.keys(res.data).length * 20; 
+        } else {
+            try { responseLength = JSON.stringify(res.data).length; } catch(e) {}
+        }
+    }
+
     return {
         status: res.status,
-        length: res.data ? JSON.stringify(res.data).length : 0,
+        length: responseLength,
         time,
         headers: res.headers,
         bodyExcerpt: res.data && typeof res.data === 'string' ? res.data.substring(0, 500) : ''

@@ -38,9 +38,19 @@ const injectPayload = async (baseUrl, payload) => {
 
         if (!res) return null;
 
+        let responseLength = 0;
+        if (res.data) {
+            if (typeof res.data === 'string') responseLength = res.data.length;
+            else if (typeof res.data === 'object' && res.data !== null) {
+                responseLength = Object.keys(res.data).length * 20;
+            } else {
+                try { responseLength = JSON.stringify(res.data).length; } catch(e) {}
+            }
+        }
+
         return {
             status: res.status,
-            length: res.data ? JSON.stringify(res.data).length : 0,
+            length: responseLength,
             time,
             body: res.data && typeof res.data === 'string' ? res.data : ''
         };
@@ -60,19 +70,28 @@ const confirmAnomaly = async (url, payload, requiredCount = 2) => {
     return successCount === requiredCount;
 };
 
-const runBehaviorAnalysis = async (endpoints) => {
+const runBehaviorAnalysis = async (endpoints, job = null) => {
     console.log(`[Behavior Analyzer] Starting deep analysis on ${endpoints.length} endpoints...`);
     const limit = pLimit(3); // Lower concurrency to avoid self-DOS
     const findings = [];
     let totalPayloadsSent = 0;
+    let completedEndpoints = 0;
 
     const analyzeEndpoint = async (urlObj) => {
         const url = typeof urlObj === 'string' ? urlObj : urlObj.url;
         console.log(`[Behavior Analyzer] Initializing baseline for: ${url}`);
         
+        if (job) {
+            await job.updateProgress({ 
+                message: `Behavioral analysis: Testing ${url.substring(0, 40)}...`, 
+                percentage: 80 + Math.round((completedEndpoints / targetEndpoints.length) * 10) 
+            });
+        }
+
         const baseline = await getBaseline(url);
         if (!baseline) {
             console.log(`[Behavior Analyzer] Failed to get baseline for: ${url}`);
+            completedEndpoints++;
             return;
         }
 
@@ -111,6 +130,7 @@ const runBehaviorAnalysis = async (endpoints) => {
                                 confidence: "HIGH",
                                 evidence: { baselineTime: baseline.time, payloadTime: testRes.time, payload }
                             });
+                            completedEndpoints++;
                             return;
                         }
                     }
@@ -125,6 +145,7 @@ const runBehaviorAnalysis = async (endpoints) => {
                                 confidence: "CRITICAL",
                                 evidence: { payload, snippet: "System files dumped to output." }
                             });
+                            completedEndpoints++;
                             return;
                         }
                     }
@@ -139,12 +160,14 @@ const runBehaviorAnalysis = async (endpoints) => {
                                 confidence: "HIGH",
                                 evidence: { baselineStatus: baseline.status, payloadStatus: testRes.status, payload }
                             });
+                            completedEndpoints++;
                             return;
                         }
                     }
                 }
             }
         }
+        completedEndpoints++;
         console.log(`[Behavior Analyzer] Finished ${url} (${payloadCount} payloads sent in ${Date.now() - startTime}ms)`);
     };
 

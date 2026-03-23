@@ -5,7 +5,7 @@ const attackLogger = require('../utils/attackLogger');
  * Passive Subdomain Enumeration Module
  * Uses Certificate Transparency (CRT.SH) to find subdomains.
  */
-async function scan(domain) {
+async function scan(domain, job = null) {
     try {
         console.log(`[Subdomain Scanner] Enumerating subdomains for: ${domain}`);
         
@@ -17,16 +17,18 @@ async function scan(domain) {
         if (!Array.isArray(data)) return [];
 
         const subdomains = new Set();
-        data.forEach(entry => {
+        for (let i = 0; i < data.length; i++) {
+            const entry = data[i];
             const names = entry.name_value.split('\n');
             names.forEach(name => {
                 const cleaned = name.trim().toLowerCase();
-                // Filter wildcard and only keep matching domain
                 if (cleaned.includes(domain) && !cleaned.includes('*')) {
                     subdomains.add(cleaned);
                 }
             });
-        });
+            // Yield every 500 entries to prevent event loop starvation
+            if (i % 500 === 0) await new Promise(resolve => setImmediate(resolve));
+        }
 
         const found = Array.from(subdomains);
         attackLogger.log({ type: 'INFO', scanner: 'Recon', url: domain, result: `Found ${found.length} subdomains: ${found.join(', ')}` });

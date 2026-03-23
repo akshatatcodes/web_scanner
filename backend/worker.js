@@ -12,14 +12,14 @@ const worker = new Worker(
     try {
       if (type === "basic-scan") {
         await job.updateProgress({ message: "Initializing scan...", percentage: 10 });
-        const result = await scanUrl(target);
+        const result = await scanUrl(target, { job });
         await job.updateProgress({ message: "Scan completed", percentage: 100 });
         return result;
       }
 
       if (type === "deep-crawl") {
         await job.updateProgress({ message: "Initializing deep crawl...", percentage: 10 });
-        const result = await deepCrawl(target);
+        const result = await deepCrawl(target, job);
         await job.updateProgress({ message: "Deep crawl completed", percentage: 100 });
         return result;
       }
@@ -39,9 +39,9 @@ const worker = new Worker(
   },
   { 
       connection, 
-      concurrency: 5,
-      lockDuration: 60000,   // Increase to 60s
-      lockRenewTime: 20000   // Renew every 20s
+      concurrency: 1,         // Reduced to 1 for maximum stability
+      lockDuration: 600000,   // Increased to 10 minutes (600s)
+      maxStalledCount: 1      // Minimize retries to avoid concurrent workers for the same job
   }
 );
 

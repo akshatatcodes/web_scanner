@@ -49,7 +49,11 @@ const PROBE_LIST = Array.from(JS_PATHS_TO_PROBE);
 /**
  * Professional Multi-Layer Scanning Engine
  */
-async function run(url) {
+/**
+ * Professional Multi-Layer Scanning Engine
+ */
+async function run(url, options = {}) {
+    const { job } = options;
     const startTime = Date.now();
     console.log(`[Engine] Starting deep analysis (with versions) for: ${url}`);
 
@@ -58,6 +62,7 @@ async function run(url) {
         const domain = new URL(url).hostname;
 
         // 1. Phase 1: Surface Discovery & Infrastructure Analysis
+        if (job) await job.updateProgress({ message: "Phase 1: Infrastructure Analysis...", percentage: 15 });
         console.log(`[Engine] Phase 1 - Surface Discovery & Infrastructure Analysis: ${url}`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 1 - Initializing Infrastructure Scan...' });
         const [staticRes, dnsInfo, sslInfo] = await Promise.all([
@@ -82,6 +87,7 @@ async function run(url) {
         const staticHtml = staticRes.data;
 
         // 1.5 Phase 1.5: WAF Profiling & Infrastructure Intelligence
+        if (job) await job.updateProgress({ message: "Phase 1.5: WAF Profiling...", percentage: 25 });
         console.log(`[Engine] Phase 1.5 - WAF Profiling & Infrastructure Intelligence...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 1.5 - WAF Profiling started' });
         const { detectWaf } = require('./scanners/wafScanner');
@@ -96,12 +102,14 @@ async function run(url) {
         }
 
         // Phase 2: Fast Static Extraction (cheerio-based, no Puppeteer)
+        if (job) await job.updateProgress({ message: "Phase 2: Static Extraction...", percentage: 35 });
         console.log(`[Engine] Phase 2 - Fast Static Extraction (Puppeteer crawl available on-demand)...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 2 - Static Extraction started' });
         const scanContext = buildStaticScanContext(url, staticHtml, staticHeaders);
         scanContext.waf = wafResults;
         
         // 3. Phase 3: Technology Fingerprinting & Security Pattern Analysis
+        if (job) await job.updateProgress({ message: "Phase 3: Tech Fingerprinting...", percentage: 45 });
         console.log(`[Engine] Phase 3 - Technology Fingerprinting & Security Pattern Analysis...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 3 - Technology Fingerprinting started' });
         
@@ -139,10 +147,11 @@ async function run(url) {
         };
 
         // 4. Phase 4: Security Vulnerability and Headers
+        if (job) await job.updateProgress({ message: "Phase 4: Vulnerability Discovery...", percentage: 55 });
         console.log(`[Engine] Phase 4 - Multi-Vector Vulnerability Discovery & Header Analysis...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 4 - Vulnerability Discovery started' });
         const [vulnerabilities, securityHeaders, rawCookieSecurity, rawSuspiciousScripts] = await Promise.all([
-            vulnerabilityScanner.scanAll(detectedTechnologies),
+            vulnerabilityScanner.scanAll(detectedTechnologies, job),
             headerScanner.scan(url),
             cookieScanner.analyze(scanContext.cookies),
             scriptScanner.analyze(scanContext.scripts)
@@ -166,6 +175,7 @@ async function run(url) {
         console.log(`[Engine] Discovery Complete. Unique Endpoints Found: ${scanContext.stats.uniqueEndpoints}`);
 
         // 5. Phase 5: Authorization Bypass & Resilience Testing
+        if (job) await job.updateProgress({ message: "Phase 5: Auth Bypass & OSINT...", percentage: 65 });
         console.log(`[Engine] Phase 5 - Authorization Bypass & Resilience Testing...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 5 - Authorization Bypass started' });
         const discoveredPaths = scanContext.endpoints.map(e => {
@@ -178,6 +188,7 @@ async function run(url) {
         ]);
 
         // 6. Phase 6 & 7: Exploitation Intelligence & Behavior-Based Detection
+        if (job) await job.updateProgress({ message: "Phase 6-7: Behavioral Analysis...", percentage: 80 });
         console.log(`[Engine] Phase 6 & 7 - Exploitation Intelligence & Behavior-Based Detection...`);
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 6 & 7 - Exploitation Intelligence started' });
         const discoveredURLs = scanContext.endpoints.map(e => e.url);
@@ -192,7 +203,7 @@ async function run(url) {
                 local: scanContext.storage.local,
                 session: scanContext.storage.session
             }),
-            safeRun(runBehaviorAnalysis, discoveredURLs)
+            safeRun(runBehaviorAnalysis, discoveredURLs, job)
         ]);
         console.log(`[Engine] Phase 6 & 7 complete. Target Endpoints Scanned: ${discoveredURLs.length}`);
 
@@ -204,7 +215,7 @@ async function run(url) {
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 5 - OSINT & Infrastructure started' });
         const [reputationResult, subdomainList] = await Promise.all([
             domainReputationScanner.scan(normalizedUrl),
-            subdomainScanner.scan(domain)
+            subdomainScanner.scan(domain, job)
         ]);
 
         // Phase 6A - Core Recon Layer (Hacker Heuristics)
@@ -247,7 +258,7 @@ async function run(url) {
         const { analyzeJS } = require('./recon/jsAnalyzer');
         const { searchGithubLeaks } = require('./recon/githubLeaks');
         const [jsReconData, githubReconData] = await Promise.all([
-             analyzeJS(scanContext.scripts.slice(0, 15)), // Limit to 15 scripts to avoid massive slowdown
+             analyzeJS(scanContext.scripts.slice(0, 15), job), // Pass job for heartbeats
              searchGithubLeaks(domain)
         ]);
 
@@ -596,10 +607,14 @@ function buildStaticScanContext(url, html, headers) {
 /**
  * Run the full Puppeteer-based deep crawl separately (on-demand).
  */
-async function deepCrawl(url) {
+async function deepCrawl(url, job = null) {
+    if (job) await job.updateProgress({ message: "Deep crawl: Initializing Puppeteer...", percentage: 20 });
     console.log(`[Engine] Starting on-demand deep crawl for: ${url}`);
     const crawler = new CrawlerService({ mode: 'active', maxPages: 15 });
-    return await crawler.crawl(url);
+    
+    const result = await crawler.crawl(url);
+    if (job) await job.updateProgress({ message: "Deep crawl: Finalizing analysis...", percentage: 90 });
+    return result;
 }
 
 module.exports = { run, deepCrawl };
