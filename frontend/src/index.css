@@ -439,17 +439,47 @@ h1 {
 
 /* Layout Overrides */
 .security-card,
-.dns-card {
+.dns-card,
+.defense-card {
   grid-column: span 1;
 }
 
 @media (min-width: 1024px) {
-
   .security-card,
-  .dns-card {
+  .dns-card,
+  .defense-card {
     grid-column: span 2;
   }
 }
+
+.defense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.defense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.def-key {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.def-val {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.def-val.pos { color: var(--success); }
+.def-val.neg { color: var(--danger); }
 
 .loader-container {
   text-align: center;

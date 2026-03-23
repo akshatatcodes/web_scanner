@@ -35,46 +35,78 @@ graph TD
 
 ## 🚀 The 7 Phases of Security Scanning
 
-The analyzer operates through an evolutionary sequence of phases, moving from basic discovery to advanced behavioral intelligence.
+The analyzer operates through an evolutionary sequence of phases, moving from basic discovery to advanced behavioral intelligence. Below is the internal flow of the Engine during a Deep Scan.
 
-### **Phase 1: Technology Fingerprinting (Discovery)**
-- Detects over 1000+ technologies (Frontend, Backend, CMS, DBs, CDNs).
-- Fingerprints web servers (Nginx, Apache, IIS) and load balancers.
-- Identifies analytics tools and third-party scripts.
+### **Phase 1-4: The Discovery & Infrastructure Pipeline**
 
-### **Phase 2: Infrastructure Hardening (DNS & SSL)**
-- **DNS Audit**: MX, TXT (SPF/DMARC), A, and AAAA record analysis.
-- **SSL/TLS Security**: Certificate validity, cipher suite evaluation, and expiry alerts.
-- **Header Analysis**: CSP, HSTS, X-Frame-Options, and more.
+```mermaid
+graph TD
+    Start((Begin Scan)) --> P1
+    
+    subgraph Phase_1_2 [Phase 1 & 2: Infrastructure]
+        P1[Axios Initial GET] --> P1_A{Check Res}
+        P1_A --> P1_B[Fetch DNS/SSL]
+        P1_A --> P1_C[Parse Static Headers]
+    end
 
-### **Phase 3: Deep Vulnerability Assessment**
-- **Injection Testing**: SQLi, XSS, and Command Injection detection.
-- **Secret Leaks**: Scans for API keys, AWS creds, and private tokens.
-- **JS Analysis**: Deep parsing of client-side scripts for endpoints and hardcoded secrets.
+    subgraph Phase_15_3 [Phase 1.5 & 3: WAF & Tech]
+        P1_C --> WAF[WAFDetection]
+        WAF -->|Identify Strategy| TechScan[Technology Fingerprinting]
+        TechScan -->|Scripts| Ext[Cookie & Script Extract]
+    end
 
-### **Phase 4: WAF Detection & Evasion Layer**
-- **Fingerprinting**: Identifies WAFs like Cloudflare, Akamai, and AWS WAF.
-- **Evasion Strategies**: Automatically applies URL encoding, case variation, and fragmentation to bypass filters.
-- **Adaptive Payloads**: Mutates payloads based on WAF response patterns.
+    subgraph Phase_4 [Phase 4: Core Vulnerability Scanners]
+        TechScan --> Vuln[Vulnerability Scanner]
+        Ext --> Header[Header Scanner]
+        Ext --> SSRF[SSRF & Endpoints]
+        Ext --> Secrets[Secret Leaks & Admin]
+    end
 
-### **Phase 5: Isolated Crawler Architecture**
-- **Puppeteer Integration**: High-fidelity crawling using headless browsers.
-- **Resource Management**: Isolation of heavy browser processes to prevent engine stalls.
-- **Event Loop Optimization**: Yielding mechanisms to allow background lock renewals (Redis/BullMQ).
+    Vuln --> Sync1((Wait For Discovery))
+    Header --> Sync1
+    SSRF --> Sync1
+    Secrets --> Sync1
+```
 
-### **Phase 6: AI-Powered Intelligence**
-- **Vulnerability Explanation**: Detailed breakdowns of identified risks using Gemini/OpenAI.
-- **Confidence Scoring**: Reduces false positives through AI-driven verification.
-- **Remediation**: Generates tailored code fixes and security recommendations.
+### **Phase 5-7: The Advanced Recon & Intelligence Pipeline**
 
-### **Phase 7: Behavioral Detection Engine**
-- **Anomaly Detection**: Tracks timing and size variations in server responses.
-- **Response Comparison**: Observes how servers react to subtly mutated payloads.
-- **Differential Analysis**: Compares server side-effects (e.g., error logs, timing changes) across different inputs.
+```mermaid
+graph TD
+    Sync1((Post-Discovery)) --> P5
+    
+    subgraph Phase_5 [Phase 5: Authorization & Heuristics]
+        P5[Endpoint Extraction] --> Auth[Auth Bypass Tester]
+        Auth --> RateLimit[Rate Limit Scanner]
+        RateLimit --> DNS_Intel[Subdomain Intel]
+    end
+
+    subgraph Phase_6 [Phase 6: OSINT & Infrastructure Pivot]
+        DNS_Intel --> SubTake[Takeover Engine]
+        DNS_Intel --> Wayback[Wayback Archiver]
+        DNS_Intel --> ASN[ASN & Cloud Pivot]
+        ASN --> CDN[CDN Bypass Tests]
+        Wayback --> JS[JS Config Analyzer]
+        Wayback --> GitHub[GitHub Leaks]
+    end
+
+    subgraph Phase_7 [Phase 7: Behavioral Engine]
+        DNS_Intel --> B1[Baseline Tester]
+        B1 --> B2[Payload Mutation]
+        B2 --> B3[Anomaly Observer]
+        B3 --> B4[Differential Grapher]
+    end
+
+    SubTake --> Agg((Data Aggregation))
+    JS --> Agg
+    B4 --> Agg
+    Agg --> Graph[Attack Graph Synthesis]
+    Graph --> AI[AI Expert Verification]
+    AI --> Final((Send JSON to UI))
+```
 
 ---
 
-## 📈 Scan Flow
+## 📈 Cross-Service Event Flow
 
 ```mermaid
 sequenceDiagram
@@ -90,19 +122,21 @@ sequenceDiagram
     Backend->>Queue: Push scan job
     Backend-->>Frontend: Return Job ID
     Queue->>Worker: Distribute job
-    Worker->>Engine: runFullScan(target)
+    Worker->>Engine: engine.run(target, job)
     
     rect rgb(240, 240, 240)
-        Note right of Engine: Multi-Phase Processing
-        Engine-->>Engine: Phase 1: Tech Fingerprinting
-        Engine-->>Engine: Phase 2-3: Infrastructure & Vulns
-        Engine-->>Engine: Phase 4: WAF Evasion
-        Engine-->>Engine: Phase 5: Deep Crawling
-        Engine-->>Engine: Phase 6: AI Verification
-        Engine-->>Engine: Phase 7: Behavioral Analysis
+        Note right of Engine: Live SSE Heartbeats
+        Engine-->>Worker: Update Progress (15%)
+        Worker-->>Queue: Process Event
+        Queue-->>Frontend: WebSocket / Axios Poll
+        
+        Engine-->>Engine: Phase 1-7 Exhaustive Scan
+        
+        Engine-->>Worker: Update Progress (80%)
     end
     
-    Worker->>Queue: Job Completed
+    Engine->>Engine: Run Attack Chain Analyzer
+    Worker->>Queue: Job Completed (Returns JSON)
     Frontend->>Backend: Poll /api/scan/:id
     Backend->>Queue: Get job results
     Backend-->>Frontend: Send detailed JSON report
@@ -174,5 +208,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ---
 
 <p align="center">
-  Developed by <b>Akshat</b>
+  Developed by <b>Akshat Jain</b>
 </p>

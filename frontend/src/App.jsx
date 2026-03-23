@@ -350,106 +350,10 @@ function App() {
             </div>
 
             <div className="results-grid">
-              {/* Recon Hacker OSINT Dashboard - Top Priority */}
-              <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
-              {/* Attack Chains - High Priority */}
-              <AttackChainView chains={results.attackChains} />
-
-              {/* Suspicious Scripts - Full Width */}
-              <SuspiciousScripts scripts={results.suspiciousScripts} />
-
-              {/* Domain Intelligence - Full Width */}
-              <DomainIntelligence domainIntel={results.domainIntel} />
-
-              {/* On-Demand Port Scanning - Full Width */}
-              <PortScanResults targetUrl={results.target || results.url} />
-
-              {/* Cookie Security - Full Width */}
-              <CookieSecurity cookieSecurity={results.cookieSecurity} />
-
-              {/* Discovery & Exposure Results - Full Width */}
-              <DiscoveryResults 
-                adminPanels={results.adminPanels}
-                hiddenEndpoints={results.hiddenEndpoints}
-                secretLeaks={results.secretLeaks}
-                directories={results.directories}
-                corsIssues={results.corsIssues}
-                graphqlFindings={results.graphqlFindings}
-                openRedirects={results.openRedirects}
-                ssrfFindings={results.ssrfFindings}
-                authBypasses={results.authBypasses}
-                rateLimits={results.rateLimits}
-                sqli={results.sqli}
-                cmdInjection={results.cmdInjection}
-                idors={results.idors}
-                jwtIssues={results.jwtIssues}
-                scanContext={crawlContext || results.scanContext}
-                waf={results.waf}
-              />
-
-              {/* Infrastructure & Security cards */}
-              <div className="result-card glass-panel security-card">
-                <div className="result-header">
-                  <CategoryIcon category="Security" />
-                  <h3 className="result-title">Security Headers</h3>
-                </div>
-                <div className="security-list">
-                  {Object.entries(results.securityHeaders).map(([k, v]) => (
-                    <div key={k} className="security-item">
-                      <span className="sec-key">{k}:</span>
-                      <span className={`sec-val ${v === 'Not Enabled' ? 'neg' : 'pos'}`}>{v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {results.sslInfo && (
-                <div className="result-card glass-panel ssl-card">
-                  <div className="result-header">
-                    <span className="category-icon">🔒</span>
-                    <h3 className="result-title">SSL/TLS Security</h3>
-                  </div>
-                  <div className="ssl-details">
-                    <div className="ssl-main-status">
-                      <span className={`status-pill ${results.sslInfo.valid ? 'success' : 'danger'}`}>
-                        {results.sslInfo.valid ? 'Certificate Valid' : 'Insecure / Expired'}
-                      </span>
-                    </div>
-                    <div className="ssl-info-grid">
-                      <div className="ssl-item">
-                        <span className="ssl-label">TLS Version:</span>
-                        <span className={`ssl-val ${results.sslInfo.isProtocolSecure ? 'pos' : 'neg'}`}>
-                          {results.sslInfo.protocol}
-                        </span>
-                      </div>
-                      <div className="ssl-item">
-                        <span className="ssl-label">Expiry:</span>
-                        <span className={`ssl-val ${results.sslInfo.remainingDays < 30 ? 'neg' : ''}`}>
-                          {results.sslInfo.validTo ? new Date(results.sslInfo.validTo).toLocaleDateString() : 'Unknown'}
-                          ({results.sslInfo.remainingDays} days left)
-                        </span>
-                      </div>
-                      <div className="ssl-item">
-                        <span className="ssl-label">Cipher:</span>
-                        <span className="ssl-val small-font">{results.sslInfo.cipher}</span>
-                      </div>
-                      <div className="ssl-item">
-                        <span className="ssl-label">Issuer:</span>
-                        <span className="ssl-val">{results.sslInfo.issuer}</span>
-                      </div>
-                      <div className="ssl-item">
-                        <span className="ssl-label">HTTPS Enforced:</span>
-                        <span className={`ssl-val ${results.sslInfo.httpsEnforced ? 'pos' : 'neg'}`}>
-                          {results.sslInfo.httpsEnforced ? 'Enforced' : 'Not Detected'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+              
+              {/* 1. Technologies First */}
               {Object.entries(grouped).map(([category, techs]) => (
-                <div key={category} className="result-card glass-panel">
+                <div key={category} className="result-card glass-panel tech-card">
                   <div className="result-header">
                     <CategoryIcon category={category} />
                     <h3 className="result-title">{category}</h3>
@@ -475,15 +379,10 @@ function App() {
                         )}
                         <span className="tech-name">{t.name}</span>
                         {t.version && (
-                          <span className="tech-version">
-                            {t.version}
-                          </span>
+                          <span className="tech-version">{t.version}</span>
                         )}
                         {results.vulnerabilities?.[t.name] && results.vulnerabilities[t.name].length > 0 && (
-                          <span
-                            className="vuln-badge"
-                            style={{ pointerEvents: 'none' }}
-                          >
+                          <span className="vuln-badge" style={{ pointerEvents: 'none' }}>
                             ⚠️ {results.vulnerabilities[t.name].length}
                             <span style={{marginLeft: '4px', fontSize: '0.6rem', opacity: 0.9}}>
                               ({results.vulnerabilities[t.name].sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity})
@@ -495,6 +394,125 @@ function App() {
                   </div>
                 </div>
               ))}
+
+              {/* 2. Security Headers */}
+              <div className="result-card glass-panel security-card">
+                <div className="result-header">
+                  <span className="category-icon">🛡️</span>
+                  <h3 className="result-title">Security Headers</h3>
+                </div>
+                <div className="security-list">
+                  {results.securityHeaders && Object.entries(results.securityHeaders).map(([k, v]) => (
+                    <div key={k} className="security-item">
+                      <span className="sec-key">{k}:</span>
+                      <span className={`sec-val ${v === 'Not Enabled' ? 'neg' : 'pos'}`}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. SSL/TLS Security */}
+              {results.sslInfo && (
+                <div className="result-card glass-panel ssl-card">
+                  <div className="result-header">
+                    <span className="category-icon">🔒</span>
+                    <h3 className="result-title">SSL/TLS Security</h3>
+                  </div>
+                  <div className="ssl-details">
+                    <div className="ssl-main-status">
+                      <span className={`status-pill ${results.sslInfo.valid ? 'success' : 'danger'}`}>
+                        {results.sslInfo.valid ? 'Certificate Valid' : 'Insecure / Expired'}
+                      </span>
+                    </div>
+                    <div className="ssl-info-grid">
+                      <div className="ssl-item">
+                        <span className="ssl-label">TLS Version:</span>
+                        <span className={`ssl-val ${results.sslInfo.isProtocolSecure ? 'pos' : 'neg'}`}>{results.sslInfo.protocol}</span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Expiry:</span>
+                        <span className={`ssl-val ${results.sslInfo.remainingDays < 30 ? 'neg' : ''}`}>
+                          {results.sslInfo.validTo ? new Date(results.sslInfo.validTo).toLocaleDateString() : 'Unknown'} ({results.sslInfo.remainingDays} days left)
+                        </span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Cipher:</span>
+                        <span className="ssl-val small-font">{results.sslInfo.cipher}</span>
+                      </div>
+                      <div className="ssl-item">
+                        <span className="ssl-label">Issuer:</span>
+                        <span className="ssl-val">{results.sslInfo.issuer}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Defense Infrastructure */}
+              <div className="result-card glass-panel defense-card">
+                <div className="result-header">
+                  <span className="category-icon">🛡️</span>
+                  <h3 className="result-title">Defense Infrastructure</h3>
+                </div>
+                <div className="defense-list">
+                   {results.waf ? (
+                     <div className="defense-item">
+                       <span className="def-key">WAF Detected:</span>
+                       <span className="def-val pos">{results.waf.name || 'Unknown WAF'}</span>
+                       {results.waf.confidence && <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Confidence: {results.waf.confidence}%</div>}
+                     </div>
+                   ) : (
+                     <div className="defense-item">
+                       <span className="def-key">WAF Detected:</span>
+                       <span className="def-val neg">No WAF Identified</span>
+                     </div>
+                   )}
+                   {results.domainIntel && results.domainIntel.asn && (
+                     <div className="defense-item" style={{ marginTop: '1rem' }}>
+                       <span className="def-key">Hosting/Cloud:</span>
+                       <span className="def-val">{results.domainIntel.asn.organization}</span>
+                     </div>
+                   )}
+                </div>
+              </div>
+
+              {/* 5. Domain Intelligence & OSINT */}
+              <DomainIntelligence domainIntel={results.domainIntel} />
+
+              {/* 6. Hacker OSINT & Recon Intelligence (ReconDashboard) */}
+              <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
+
+              {/* Attack Chains */}
+              <AttackChainView chains={results.attackChains} />
+
+              {/* Suspicious Scripts */}
+              <SuspiciousScripts scripts={results.suspiciousScripts} />
+
+              {/* Port Scans */}
+              <PortScanResults targetUrl={results.target || results.url} />
+
+              {/* Cookies */}
+              <CookieSecurity cookieSecurity={results.cookieSecurity} />
+
+              {/* Discovery & Exposure */}
+              <DiscoveryResults 
+                adminPanels={results.adminPanels}
+                hiddenEndpoints={results.hiddenEndpoints}
+                secretLeaks={results.secretLeaks}
+                directories={results.directories}
+                corsIssues={results.corsIssues}
+                graphqlFindings={results.graphqlFindings}
+                openRedirects={results.openRedirects}
+                ssrfFindings={results.ssrfFindings}
+                authBypasses={results.authBypasses}
+                rateLimits={results.rateLimits}
+                sqli={results.sqli}
+                cmdInjection={results.cmdInjection}
+                idors={results.idors}
+                jwtIssues={results.jwtIssues}
+                scanContext={crawlContext || results.scanContext}
+                waf={results.waf}
+              />
             </div>
           </div>
         )}
