@@ -3,6 +3,13 @@ import axios from 'axios';
 import './index.css';
 import CookieSecurity from './components/CookieSecurity';
 import SuspiciousScripts from './components/SuspiciousScripts';
+import DomainIntelligence from './components/DomainIntelligence';
+import PortScanResults from './components/PortScanResults';
+
+import DiscoveryResults from './components/DiscoveryResults';
+import AttackChainView from './components/AttackChainView';
+import ReconDashboard from './components/ReconDashboard';
+import AttackConsole from './components/AttackConsole';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -49,11 +56,50 @@ const getSeverityClass = (severity) => {
 };
 
 function App() {
+  const [activeTab, setActiveTab] = useState('scan');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [selectedTechVulns, setSelectedTechVulns] = useState(null);
+  const [deepCrawling, setDeepCrawling] = useState(false);
+  const [deepCrawlDone, setDeepCrawlDone] = useState(false);
+  const [deepCrawlError, setDeepCrawlError] = useState('');
+  const [crawlContext, setCrawlContext] = useState(null);
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobMessage, setJobMessage] = useState('');
+  const [currentJobId, setCurrentJobId] = useState(null);
+
+  const pollJobStatus = async (jobId, onComplete, onError, onProgress) => {
+    try {
+      const interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/jobs/${jobId}`);
+          const { state, progress, result, failedReason } = res.data;
+          
+          if (progress?.percentage) {
+             onProgress(progress.percentage, progress.message || '');
+          } else if (typeof progress === 'number') {
+             onProgress(progress, '');
+          }
+
+          if (state === 'completed') {
+            clearInterval(interval);
+            onComplete(result);
+          } else if (state === 'failed') {
+            clearInterval(interval);
+            onError(failedReason || 'Job failed on the server.');
+          }
+        } catch (err) {
+          console.error("Polling error:", err);
+          clearInterval(interval);
+          onError('Error checking scan status. The server might be unreachable.');
+        }
+      }, 2000);
+    } catch (err) {
+      onError('Failed to initiate polling.');
+    }
+  };
 
   const handleScan = async (e) => {
     e.preventDefault();
@@ -62,17 +108,64 @@ function App() {
     setLoading(true);
     setError('');
     setResults(null);
+    setDeepCrawlDone(false);
+    setDeepCrawlError('');
+    setCrawlContext(null);
+    setJobProgress(0);
+    setJobMessage('Submitting scan job...');
 
     let targetUrl = url.trim();
     if (!targetUrl.startsWith('http')) targetUrl = 'https://' + targetUrl;
 
     try {
       const response = await axios.post(`${API_BASE}/scan`, { url: targetUrl });
-      setResults(response.data);
+      const { jobId } = response.data;
+      setCurrentJobId(jobId);
+      
+      await pollJobStatus(jobId, 
+        (finalResult) => {
+           setResults(finalResult);
+           setLoading(false);
+           setJobProgress(100);
+        },
+        (errMessage) => {
+           setError(errMessage);
+           setLoading(false);
+        },
+        (progPct, progMsg) => {
+           setJobProgress(progPct);
+           if (progMsg) setJobMessage(progMsg);
+        }
+      );
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to scan the target.');
-    } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeepCrawl = async () => {
+    if (!results) return;
+    setDeepCrawling(true);
+    setDeepCrawlError('');
+    try {
+      const response = await axios.post(`${API_BASE}/deep-crawl`, { url: results.url });
+      const { jobId } = response.data;
+
+      await pollJobStatus(jobId,
+        (finalResult) => {
+           setCrawlContext(finalResult);
+           setDeepCrawlDone(true);
+           setDeepCrawling(false);
+        },
+        (errMessage) => {
+           setDeepCrawlError(errMessage);
+           setDeepCrawling(false);
+        },
+        () => {} // optional progress updates for deep crawl
+      );
+    } catch (err) {
+      setDeepCrawlError(err.response?.data?.error || 'Deep crawl failed.');
+      setDeepCrawling(false);
     }
   };
 
@@ -118,7 +211,19 @@ function App() {
       </header>
 
       <main>
-        <div className="search-container">
+        <div className="nav-tabs">
+          <button 
+            className={`nav-tab ${activeTab === 'scan' ? 'active' : ''}`}
+            onClick={() => setActiveTab('scan')}
+          >
+            🔍 Security Scanner
+          </button>
+
+        </div>
+
+        {activeTab === 'scan' && (
+          <>
+            <div className="search-container">
           <form className="search-form glass-panel" onSubmit={handleScan}>
             <input
               type="text"
@@ -140,12 +245,16 @@ function App() {
           </form>
         </div>
 
+        {/* Live Attack Console */}
+        <AttackConsole isActive={loading} />
+
         {error && <div className="error-message glass-panel" style={{ color: 'var(--danger)', marginTop: '1rem' }}>{error}</div>}
 
         {loading && (
           <div className="loader-container">
             <div className="spinner"></div>
-            <div className="loader-text">Probing Network & Runtime JS...</div>
+            <div className="loader-text">{jobMessage || 'Probing Network & Runtime JS...'}</div>
+            {jobProgress > 0 && <div style={{marginTop: '1rem', color: 'var(--primary)'}}>{jobProgress}%</div>}
           </div>
         )}
 
@@ -198,15 +307,85 @@ function App() {
                     {new Date(results.timestamp).toLocaleString()}
                   </span>
                 </div>
+                <div className="meta-item" style={{ marginLeft: 'auto' }}>
+                  {!deepCrawlDone ? (
+                    <button
+                      className="btn-deep-crawl"
+                      onClick={handleDeepCrawl}
+                      disabled={deepCrawling}
+                      title="Run full Puppeteer-based crawl for deeper endpoint discovery"
+                    >
+                      {deepCrawling ? (
+                        <><span className="btn-spinner" />Crawling...</>
+                      ) : (
+                        <>🕷️ Deep Crawl</>
+                      )}
+                    </button>
+                  ) : (
+                    <span className="status-badge success">✅ Deep Crawl Done</span>
+                  )}
+                  {deepCrawlError && <span style={{ color: 'var(--danger)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>{deepCrawlError}</span>}
+                </div>
+                
+                {/* Download Report Buttons */}
+                <div className="meta-item download-actions">
+                  <div className="btn-group">
+                    <button 
+                      className="btn-secondary" 
+                      onClick={() => window.open(`${API_BASE}/reports/pdf/${currentJobId}`, '_blank')}
+                      title="Download full professional PDF report"
+                    >
+                      📄 Download PDF
+                    </button>
+                    <button 
+                      className="btn-secondary" 
+                      onClick={() => window.open(`${API_BASE}/reports/html/${currentJobId}`, '_blank')}
+                      title="Open interactive HTML report"
+                    >
+                      🌐 HTML
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="results-grid">
+              {/* Recon Hacker OSINT Dashboard - Top Priority */}
+              <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
+              {/* Attack Chains - High Priority */}
+              <AttackChainView chains={results.attackChains} />
+
               {/* Suspicious Scripts - Full Width */}
               <SuspiciousScripts scripts={results.suspiciousScripts} />
 
+              {/* Domain Intelligence - Full Width */}
+              <DomainIntelligence domainIntel={results.domainIntel} />
+
+              {/* On-Demand Port Scanning - Full Width */}
+              <PortScanResults targetUrl={results.target || results.url} />
+
               {/* Cookie Security - Full Width */}
               <CookieSecurity cookieSecurity={results.cookieSecurity} />
+
+              {/* Discovery & Exposure Results - Full Width */}
+              <DiscoveryResults 
+                adminPanels={results.adminPanels}
+                hiddenEndpoints={results.hiddenEndpoints}
+                secretLeaks={results.secretLeaks}
+                directories={results.directories}
+                corsIssues={results.corsIssues}
+                graphqlFindings={results.graphqlFindings}
+                openRedirects={results.openRedirects}
+                ssrfFindings={results.ssrfFindings}
+                authBypasses={results.authBypasses}
+                rateLimits={results.rateLimits}
+                sqli={results.sqli}
+                cmdInjection={results.cmdInjection}
+                idors={results.idors}
+                jwtIssues={results.jwtIssues}
+                scanContext={crawlContext || results.scanContext}
+                waf={results.waf}
+              />
 
               {/* Infrastructure & Security cards */}
               <div className="result-card glass-panel security-card">
@@ -277,7 +456,15 @@ function App() {
                   </div>
                   <div className="tags-container">
                     {techs.map((t, i) => (
-                      <span key={i} className="tag tech-tag">
+                      <span 
+                        key={i} 
+                        className={`tag tech-tag ${t.version ? 'clickable-tag' : ''}`}
+                        onClick={() => t.version && setSelectedTechVulns({ 
+                          name: t.name, 
+                          vulns: results.vulnerabilities?.[t.name] || [] 
+                        })}
+                        title={t.version ? "Click to view vulnerability details" : ""}
+                      >
                         {t.icon && (
                           <img
                             src={`https://www.wappalyzer.com/images/icons/${encodeURIComponent(t.icon)}`}
@@ -287,14 +474,20 @@ function App() {
                           />
                         )}
                         <span className="tech-name">{t.name}</span>
-                        {t.version && <span className="tech-version">{t.version}</span>}
-                        {results.vulnerabilities?.[t.name] && (
+                        {t.version && (
+                          <span className="tech-version">
+                            {t.version}
+                          </span>
+                        )}
+                        {results.vulnerabilities?.[t.name] && results.vulnerabilities[t.name].length > 0 && (
                           <span
-                            className="vuln-badge clickable"
-                            title="Click to view vulnerabilities"
-                            onClick={() => setSelectedTechVulns({ name: t.name, vulns: results.vulnerabilities[t.name] })}
+                            className="vuln-badge"
+                            style={{ pointerEvents: 'none' }}
                           >
                             ⚠️ {results.vulnerabilities[t.name].length}
+                            <span style={{marginLeft: '4px', fontSize: '0.6rem', opacity: 0.9}}>
+                              ({results.vulnerabilities[t.name].sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity})
+                            </span>
                           </span>
                         )}
                       </span>
@@ -305,6 +498,10 @@ function App() {
             </div>
           </div>
         )}
+          </>
+        )}
+
+
       </main>
 
       {/* Vulnerability Modal */}
@@ -312,24 +509,48 @@ function App() {
         <div className="modal-overlay fadeIn" onClick={() => setSelectedTechVulns(null)}>
           <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Vulnerabilities: {selectedTechVulns.name}</h2>
+              <div style={{ flex: 1 }}>
+                <h2 className="modal-title">Vulnerabilities: {selectedTechVulns.name}</h2>
+                <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.4rem', alignItems: 'center' }}>
+                  <span className="status-badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                    {selectedTechVulns.vulns.length} Issues Found
+                  </span>
+                  {selectedTechVulns.vulns.length > 0 && (
+                    <span 
+                      className={`risk-pill small ${getSeverityClass(
+                        selectedTechVulns.vulns.sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity
+                      )}`}
+                    >
+                      Overall Risk: {selectedTechVulns.vulns.sort((a,b) => (b.score || 0) - (a.score || 0))[0]?.severity}
+                    </span>
+                  )}
+                </div>
+              </div>
               <button className="close-btn" onClick={() => setSelectedTechVulns(null)}>&times;</button>
             </div>
             <div className="modal-body">
-              {selectedTechVulns.vulns.map((v, i) => (
-                <div key={i} className="vuln-item">
-                  <div className="vuln-meta">
-                    <span className="vuln-id">{v.id}</span>
-                    <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
-                      {v.severity} ({v.score})
-                    </span>
+              {selectedTechVulns.vulns.length > 0 ? (
+                selectedTechVulns.vulns.map((v, i) => (
+                  <div key={i} className="vuln-item">
+                    <div className="vuln-meta">
+                      <span className="vuln-id">{v.id}</span>
+                      <span className={`vuln-severity ${getSeverityClass(v.severity)}`}>
+                        {v.severity} ({v.score})
+                      </span>
+                    </div>
+                    <p className="vuln-desc">{v.description}</p>
+                    <div className="vuln-footer">
+                      <span className="vuln-date">Published: {new Date(v.published).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <p className="vuln-desc">{v.description}</p>
-                  <div className="vuln-footer">
-                    <span className="vuln-date">Published: {new Date(v.published).toLocaleDateString()}</span>
-                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
+                  <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>No Vulnerabilities Found</h3>
+                  <p>This version of <strong>{selectedTechVulns.name}</strong> appears to be secure or is too new for listed CVEs.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
