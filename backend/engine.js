@@ -68,14 +68,16 @@ async function run(url, options = {}) {
         attackLogger.log({ type: 'INFO', scanner: 'Engine', url, result: 'Phase 1 - Initializing Infrastructure Scan...' });
         const [staticRes, dnsInfo, sslInfo] = await Promise.all([
             axios.get(url, {
-                timeout: 60000,
+                timeout: 90000,
                 validateStatus: null,
                 httpsAgent: new https.Agent({ rejectUnauthorized: false }),
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
             }).catch(e => {
                 let reason = e.message;
-                if (e.code === 'ETIMEDOUT' || e.code === 'ECONNABORTED') reason = 'Connection timed out';
-                else if (e.code === 'ENOTFOUND') reason = 'Domain not found';
+                if (e.code === 'ETIMEDOUT' || e.code === 'ECONNABORTED') reason = 'Connection timed out — the target site may be down, blocking scanner IPs, or behind a firewall';
+                else if (e.code === 'ECONNREFUSED') reason = 'Connection refused — the target site is actively rejecting connections';
+                else if (e.code === 'ENOTFOUND') reason = 'Domain not found — DNS resolution failed';
+                else if (e.code === 'ECONNRESET') reason = 'Connection reset — the target may be blocking automated requests';
                 else if (e.name === 'AggregateError' && e.errors?.length) reason = e.errors[0].message || e.errors[0].code;
                 throw new Error(`Target is unreachable: ${reason}`);
             }),

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1080"/>
+<title>Vulnexa LinkedIn Slides</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0f1e;font-family:'Inter',sans-serif;}
+  .slide{
+    width:1080px;height:1080px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0a0f1e 0%,#0d1929 50%,#080e1c 100%);
+  }
+  .slide::before{
+    content:'';position:absolute;inset:0;
+    background-image:linear-gradient(rgba(0,255,136,0.04) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(0,255,136,0.04) 1px,transparent 1px);
+    background-size:48px 48px;
+  }
+  .slide-num{position:absolute;top:28px;right:36px;font-family:'JetBrains Mono',monospace;color:rgba(0,255,136,0.5);font-size:13px;}
+  .url-badge{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace;color:#00ffcc;font-size:15px;
+    background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.25);
+    padding:8px 24px;border-radius:100px;letter-spacing:.5px;white-space:nowrap;}
+  /* SLIDE 1 */
+  .s1-shield{width:110px;height:110px;background:linear-gradient(135deg,#00ff88,#00ccff);
+    clip-path:polygon(50% 0%,100% 20%,100% 70%,50% 100%,0% 70%,0% 20%);
+    display:flex;align-items:center;justify-content:center;margin-bottom:28px;box-shadow:0 0 60px rgba(0,255,136,0.4);}
+  .s1-title{font-size:88px;font-weight:900;letter-spacing:-2px;line-height:1;
+    background:linear-gradient(90deg,#00ff88,#00ccff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .s1-sub{font-size:22px;color:#8899bb;margin-top:14px;font-weight:400;letter-spacing:.5px;text-align:center;}
+  .s1-tags{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap;justify-content:center;}
+  .tag{background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);color:#00ff88;font-size:13px;padding:6px 16px;border-radius:100px;font-family:'JetBrains Mono',monospace;}
+  /* SLIDE 2 */
+  .s2-title{font-size:44px;font-weight:900;color:#fff;margin-bottom:28px;text-align:center;}
+  .s2-title span{color:#00ff88;}
+  .pipeline{display:flex;flex-direction:column;gap:0;width:780px;}
+  .pipe-step{display:flex;align-items:center;gap:16px;position:relative;}
+  .pipe-step:not(:last-child)::after{content:'';position:absolute;left:23px;top:52px;width:2px;height:14px;background:linear-gradient(to bottom,rgba(0,255,136,0.5),rgba(0,204,255,0.3));}
+  .pipe-num{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;font-family:'JetBrains Mono',monospace;flex-shrink:0;border:2px solid;}
+  .pipe-card{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 20px;margin:4px 0;}
+  .pipe-card .ph{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}
+  .pipe-card .pt{font-size:13px;color:#c8d6f0;font-weight:600;}
+  /* SLIDE 3 */
+  .s3-title{font-size:42px;font-weight:900;color:#fff;text-align:center;margin-bottom:6px;}
+  .s3-title span{color:#ff4757;}
+  .s3-sub{color:#8899bb;font-size:15px;text-align:center;margin-bottom:24px;}
+  .challenges-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:920px;}
+  .ch-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:18px 20px;display:flex;gap:14px;align-items:flex-start;}
+  .ch-icon{font-size:28px;flex-shrink:0;margin-top:2px;}
+  .ch-label{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;}
+  .ch-desc{font-size:12px;color:#8899bb;line-height:1.5;}
+  /* SLIDE 4 */
+  .s4-title{font-size:42px;font-weight:900;color:#fff;text-align:center;margin-bottom:6px;}
+  .s4-title span{background:linear-gradient(90deg,#00ff88,#00ccff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .s4-sub{color:#8899bb;font-size:15px;text-align:center;margin-bottom:28px;}
+  .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:920px;}
+  .feat-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:20px 16px;text-align:center;}
+  .feat-icon{font-size:34px;margin-bottom:8px;}
+  .feat-label{font-size:13px;font-weight:700;color:#e0eaff;}
+  .feat-desc{font-size:11px;color:#8899bb;margin-top:4px;line-height:1.4;}
+  /* SLIDE 5 */
+  .s5-glow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:700px;height:700px;background:radial-gradient(circle,rgba(0,255,136,0.07) 0%,transparent 70%);pointer-events:none;}
+  .s5-eyeline{width:100%;height:2px;background:linear-gradient(90deg,transparent,#00ff88,#00ccff,transparent);margin-bottom:40px;box-shadow:0 0 20px rgba(0,255,136,0.5);}
+  .s5-title{font-size:48px;font-weight:900;color:#fff;text-align:center;line-height:1.1;margin-bottom:10px;}
+  .s5-coming{font-size:38px;font-weight:900;text-align:center;background:linear-gradient(90deg,#00ff88,#00ccff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:40px;}
+  .s5-cols{display:flex;gap:28px;width:900px;margin-bottom:32px;}
+  .s5-col{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:24px;}
+  .s5-col h3{font-size:14px;font-weight:700;color:#00ff88;margin-bottom:14px;letter-spacing:.5px;}
+  .s5-col ul{list-style:none;}
+  .s5-col ul li{font-size:13px;color:#c8d6f0;padding:4px 0;display:flex;align-items:center;gap:8px;}
+  .s5-col ul li::before{content:'→';color:#00ff88;font-weight:700;}
+  .s5-link{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#00ccff;background:rgba(0,204,255,0.1);border:2px solid rgba(0,204,255,0.3);padding:12px 32px;border-radius:100px;letter-spacing:1px;text-align:center;}
+  .tech-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .tech-chip{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:5px 14px;font-size:12px;color:#8899bb;font-family:'JetBrains Mono',monospace;}
+  .s5-footer{font-size:13px;color:#445;position:absolute;bottom:68px;text-align:center;}
+  /* nav */
+  #nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:9999;background:#111827;padding:10px 20px;border-radius:100px;border:1px solid #222;}
+  #nav button{background:#00ff88;color:#000;border:none;padding:8px 20px;border-radius:100px;cursor:pointer;font-weight:700;font-size:13px;font-family:'Inter',sans-serif;}
+  #nav span{color:#8899bb;align-self:center;font-size:13px;font-family:'JetBrains Mono',monospace;min-width:40px;text-align:center;}
+</style>
+</head>
+<body>
+<div id="container">
+<!-- SLIDE 1 -->
+<div class="slide" id="slide-1">
+  <div class="slide-num">01 / 05</div>
+  <div class="s1-shield">
+    <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#000a14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <polyline points="9 12 11 14 15 10"/>
+    </svg>
+  </div>
+  <div class="s1-title">VULNEXA</div>
+  <div class="s1-sub">Professional Web Security Exposure Analyzer</div>
+  <div class="s1-tags">
+    <span class="tag">7-Phase Scanner</span>
+    <span class="tag">15+ Modules</span>
+    <span class="tag">AI-Powered</span>
+    <span class="tag">Free to Try</span>
+  </div>
+  <div class="url-badge">🌐 vulnexapro.vercel.app</div>
+</div>
+<!-- SLIDE 2 -->
+<div class="slide" id="slide-2" style="display:none;">
+  <div class="slide-num">02 / 05</div>
+  <div class="s2-title">How <span>Vulnexa</span> Works</div>
+  <div class="pipeline">
+    <div class="pipe-step"><div class="pipe-num" style="color:#00ccff;border-color:#00ccff;">01</div><div class="pipe-card"><div class="ph" style="color:#00ccff;">PHASE 1</div><div class="pt">Infrastructure Analysis — DNS, SSL Certificates, HTTP Headers</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#a855f7;border-color:#a855f7;">02</div><div class="pipe-card"><div class="ph" style="color:#a855f7;">PHASE 2</div><div class="pt">WAF Fingerprinting & Evasion Strategy Selection</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#06b6d4;border-color:#06b6d4;">03</div><div class="pipe-card"><div class="ph" style="color:#06b6d4;">PHASE 3</div><div class="pt">Technology Fingerprinting — 50+ rules, version detection</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#f97316;border-color:#f97316;">04</div><div class="pipe-card"><div class="ph" style="color:#f97316;">PHASE 4</div><div class="pt">Vulnerability Discovery — CVEs, SQLi, CORS, GraphQL, SSRF, IDOR</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#ef4444;border-color:#ef4444;">05</div><div class="pipe-card"><div class="ph" style="color:#ef4444;">PHASE 5</div><div class="pt">Auth Bypass & OSINT — Subdomains, Wayback, ASN Pivoting</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#eab308;border-color:#eab308;">06</div><div class="pipe-card"><div class="ph" style="color:#eab308;">PHASE 6-7</div><div class="pt">Behavioral Anomaly Detection — Timing Analysis, Payload Mutation</div></div></div>
+    <div class="pipe-step"><div class="pipe-num" style="color:#00ff88;border-color:#00ff88;">07</div><div class="pipe-card"><div class="ph" style="color:#00ff88;">AI LAYER</div><div class="pt">Gemini 2.5 Analysis + Attack Graph + Downloadable HTML Report</div></div></div>
+  </div>
+  <div class="url-badge">🌐 vulnexapro.vercel.app</div>
+</div>
+<!-- SLIDE 3 -->
+<div class="slide" id="slide-3" style="display:none;">
+  <div class="slide-num">03 / 05</div>
+  <div class="s3-title">The Real <span>Challenges</span></div>
+  <div class="s3-sub">Building this was NOT easy — here's what we fought through</div>
+  <div class="challenges-grid">
+    <div class="ch-card"><div class="ch-icon">🔥</div><div><div class="ch-label">BullMQ Job Stalling</div><div class="ch-desc">Long scans blocked the event loop, causing lock renewal failures. Fixed with async yielding and heartbeats.</div></div></div>
+    <div class="ch-card"><div class="ch-icon">🛡️</div><div><div class="ch-label">WAF Evasion</div><div class="ch-desc">Cloudflare & Akamai blocked every scan. Built a strategy engine: URL encoding, double-encoding, fragmentation.</div></div></div>
+    <div class="ch-card"><div class="ch-icon">🔒</div><div><div class="ch-label">SSL Certificate Hell</div><div class="ch-desc">"unable to get local issuer certificate" on Render cloud. Solved with a custom HTTPS agent bypass.</div></div></div>
+    <div class="ch-card"><div class="ch-icon">🐳</div><div><div class="ch-label">Puppeteer in Docker</div><div class="ch-desc">Browser crashed inside containers. Isolated full crawl to an on-demand "Deep Scan" mode.</div></div></div>
+    <div class="ch-card"><div class="ch-icon">🤖</div><div><div class="ch-label">False Positives in CVE Matching</div><div class="ch-desc">Too much noise from keyword matching. Integrated Gemini 2.5 AI to score confidence per finding.</div></div></div>
+    <div class="ch-card"><div class="ch-icon">💥</div><div><div class="ch-label">AggregateError Crashes</div><div class="ch-desc">Raw Node.js stack traces dumped to the UI. Fixed with structured error extraction and clean messages.</div></div></div>
+  </div>
+  <div class="url-badge">🌐 vulnexapro.vercel.app</div>
+</div>
+<!-- SLIDE 4 -->
+<div class="slide" id="slide-4" style="display:none;">
+  <div class="slide-num">04 / 05</div>
+  <div class="s4-title">What <span>Vulnexa</span> Can Do</div>
+  <div class="s4-sub">15+ specialized scanning modules. All in one tool.</div>
+  <div class="features-grid">
+    <div class="feat-card"><div class="feat-icon">🔍</div><div class="feat-label">CVE Detection</div><div class="feat-desc">Version-aware CVE matching with 50+ tech fingerprints</div></div>
+    <div class="feat-card"><div class="feat-icon">🛡️</div><div class="feat-label">WAF Detection</div><div class="feat-desc">Fingerprint & evade Cloudflare, Imperva, Akamai</div></div>
+    <div class="feat-card"><div class="feat-icon">🌐</div><div class="feat-label">Subdomain OSINT</div><div class="feat-desc">Enumerate, classify, and check for subdomain takeovers</div></div>
+    <div class="feat-card"><div class="feat-icon">💉</div><div class="feat-label">SQLi & Injection</div><div class="feat-desc">Time-based and error-based SQL injection probing</div></div>
+    <div class="feat-card"><div class="feat-icon">🔓</div><div class="feat-label">Auth Bypass</div><div class="feat-desc">Path traversal, JWT weaknesses, forced browsing</div></div>
+    <div class="feat-card"><div class="feat-icon">🌀</div><div class="feat-label">Behavior Analysis</div><div class="feat-desc">Timing anomaly detection and payload mutation</div></div>
+    <div class="feat-card"><div class="feat-icon">🔑</div><div class="feat-label">Secret Leaks</div><div class="feat-desc">API keys and tokens exposed in JS files</div></div>
+    <div class="feat-card"><div class="feat-icon">📊</div><div class="feat-label">AI Attack Graph</div><div class="feat-desc">Gemini 2.5-powered attack chain visualization</div></div>
+    <div class="feat-card"><div class="feat-icon">📄</div><div class="feat-label">HTML Reports</div><div class="feat-desc">Downloadable professional security audit reports</div></div>
+  </div>
+  <div class="url-badge">🌐 vulnexapro.vercel.app</div>
+</div>
+<!-- SLIDE 5 -->
+<div class="slide" id="slide-5" style="display:none;">
+  <div class="s5-glow"></div>
+  <div class="slide-num">05 / 05</div>
+  <div class="s5-eyeline"></div>
+  <div class="s5-title">This Is Just The Beginning...</div>
+  <div class="s5-coming">🚀 More Is Coming.</div>
+  <div class="s5-cols">
+    <div class="s5-col">
+      <h3>WHAT'S NEXT</h3>
+      <ul>
+        <li>Deeper CVE Correlation Engine</li>
+        <li>Scheduled Auto-Scans</li>
+        <li>Team Collaboration Mode</li>
+        <li>Full REST API Access</li>
+        <li>Mobile-Friendly UI Overhaul</li>
+      </ul>
+    </div>
+    <div class="s5-col" style="text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+      <div style="font-size:14px;color:#8899bb;font-weight:600;">TRY IT FREE — RIGHT NOW</div>
+      <div class="s5-link">vulnexapro.vercel.app</div>
+      <div style="font-size:12px;color:#556;">No sign-up required</div>
+    </div>
+  </div>
+  <div class="tech-row">
+    <span class="tech-chip">Node.js</span><span class="tech-chip">React</span><span class="tech-chip">BullMQ</span>
+    <span class="tech-chip">Redis</span><span class="tech-chip">MongoDB</span><span class="tech-chip">Gemini 2.5</span>
+    <span class="tech-chip">Render</span><span class="tech-chip">Vercel</span>
+  </div>
+  <div class="s5-footer">Built with ❤️ — blood, sweat &amp; debugging</div>
+</div>
+</div>
+
+<div id="nav">
+  <button id="prev" onclick="go(-1)">← Prev</button>
+  <span id="counter">1 / 5</span>
+  <button id="next" onclick="go(1)">Next →</button>
+</div>
+
+<script>
+let cur = 1;
+const total = 5;
+function go(d) {
+  document.getElementById('slide-' + cur).style.display = 'none';
+  cur = Math.max(1, Math.min(total, cur + d));
+  document.getElementById('slide-' + cur).style.display = 'flex';
+  document.getElementById('counter').textContent = cur + ' / ' + total;
+}
+</script>
+</body>
+</html>
