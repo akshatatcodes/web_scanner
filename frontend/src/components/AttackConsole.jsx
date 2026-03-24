@@ -27,8 +27,9 @@ const AttackConsole = ({ isActive, onNewFinding }) => {
   useEffect(() => {
     if (!isActive) return;
 
-    // Connect SSE
-    const es = new EventSource('http://localhost:5000/api/attack-stream');
+    // Connect SSE dynamically
+    const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:5000/api`;
+    const es = new EventSource(`${API_BASE}/attack-stream`);
     esRef.current = es;
 
     es.onopen = () => {
