@@ -82,21 +82,68 @@ function calculateMetrics(results) {
 
     // Add other findings (SQLi, IDOR, etc.)
     const directFindings = [
-        { key: 'sqli', type: 'SQL_INJECTION', severity: 'HIGH', title: 'SQL Injection confirmed' },
-        { key: 'cmdInjection', type: 'COMMAND_INJECTION', severity: 'HIGH', title: 'OS Command Injection confirmed' },
-        { key: 'idors', type: 'IDOR_VULNERABILITY', severity: 'HIGH', title: 'IDOR Vulnerability' },
-        { key: 'ssrfFindings', type: 'SSRF_VULNERABILITY', severity: 'HIGH', title: 'SSRF Vulnerability' },
-        { key: 'jwtIssues', type: 'JWT_MISCONFIG', severity: 'MEDIUM', title: 'JWT Security Issue' }
+        { key: 'sqli', type: 'SQL_INJECTION', severity: 'HIGH', title: 'SQL Injection confirmed', defaultDescription: 'The scanner confirmed a SQL Injection vulnerability, allowing attackers to interfere with database queries.' },
+        { key: 'cmdInjection', type: 'COMMAND_INJECTION', severity: 'HIGH', title: 'OS Command Injection confirmed', defaultDescription: 'The scanner discovered an OS Command Injection vulnerability, allowing attackers to execute arbitrary commands on the host operating system.' },
+        { key: 'idors', type: 'IDOR_VULNERABILITY', severity: 'HIGH', title: 'IDOR Vulnerability', defaultDescription: 'An Insecure Direct Object Reference (IDOR) was found, which may allow unauthorized access to sensitive records.' },
+        { key: 'ssrfFindings', type: 'SSRF_VULNERABILITY', severity: 'HIGH', title: 'SSRF Vulnerability', defaultDescription: 'A Server-Side Request Forgery vulnerability was observed, potentially allowing servers to be coerced into making arbitrary internal/external requests.' },
+        { key: 'jwtIssues', type: 'JWT_MISCONFIG', severity: 'MEDIUM', title: 'JWT Security Issue', defaultDescription: 'A JSON Web Token (JWT) misconfiguration or weakness was detected.' },
+        { key: 'adminPanels', type: 'AUTH_BYPASS', severity: 'MEDIUM', title: 'Admin Panel Exposed', defaultDescription: 'An administrative interface was exposed without adequate obfuscation or protection, potentially creating a lucrative target.' },
+        { key: 'secretLeaks', type: 'JWT_MISCONFIG', severity: 'HIGH', title: 'Sensitive Information Leak', defaultDescription: 'API keys, tokens, or sensitive credentials were found exposed in the application files.' },
+        { key: 'openRedirects', type: 'OPEN_REDIRECT', severity: 'LOW', title: 'Open Redirect Vulnerability', defaultDescription: 'A parameter allows the application to redirect users to external arbitrary URLs without validation.' },
+        { key: 'corsIssues', type: 'MISSING_CSP', severity: 'LOW', title: 'Permissive CORS Configuration', defaultDescription: 'Cross-Origin Resource Sharing is configured permissively, potentially allowing unauthorized domains to read sensitive data.' },
+        { key: 'authBypasses', type: 'AUTH_BYPASS', severity: 'CRITICAL', title: 'Authorization Bypass', defaultDescription: 'The scanner identified a flaw allowing authentication or authorization checks to be bypassed.' },
+        { key: 'directories', type: 'MISSING_CSP', severity: 'LOW', title: 'Open Directory / File Exposure', defaultDescription: 'A sensitive directory or file backup was discovered on the server.' },
+        { key: 'hiddenEndpoints', type: 'MISSING_CSP', severity: 'LOW', title: 'Hidden API / Status Endpoint', defaultDescription: 'An internal or undocumented API endpoint was discovered.' },
+        { key: 'graphqlFindings', type: 'MISSING_CSP', severity: 'LOW', title: 'GraphQL Introspection / Exposure', defaultDescription: 'The GraphQL endpoint allows introspection or displays overly verbose schema errors.' },
+        { key: 'rateLimits', type: 'MISSING_CSP', severity: 'LOW', title: 'Missing Rate Limiting', defaultDescription: 'An authentication or sensitive endpoint is missing rate limiting protections, making it vulnerable to brute-force attacks.' },
     ];
 
     directFindings.forEach(df => {
         if (results[df.key] && results[df.key].length > 0) {
+            const grouped = new Map();
             results[df.key].forEach(f => {
+                const ep = f.url || f.endpoint;
+                if (!ep) return;
+                let baseUrl = ep;
+                try {
+                    const u = new URL(ep);
+                    baseUrl = u.origin + u.pathname;
+                } catch(e) {
+                    baseUrl = ep.split('?')[0];
+                }
+                if (!grouped.has(baseUrl)) {
+                    grouped.set(baseUrl, {
+                        ...df,
+                        description: f.description || f.reason || f.details || df.defaultDescription,
+                        endpoints: new Set([ep]),
+                        payloads: new Set(f.payload ? [f.payload] : []),
+                        evidenceAcc: [f.evidence || f.details || ep]
+                    });
+                } else {
+                    const existing = grouped.get(baseUrl);
+                    existing.endpoints.add(ep);
+                    if (f.payload) existing.payloads.add(f.payload);
+                    const ev = f.evidence || f.details || ep;
+                    // Avoid duplicating exact same evidence blocks
+                    if (!existing.evidenceAcc.includes(ev) && typeof ev === 'string') {
+                        existing.evidenceAcc.push(ev);
+                    }
+                }
+            });
+
+            grouped.forEach((g, baseUrl) => {
+                const epList = Array.from(g.endpoints);
+                const payloadList = Array.from(g.payloads);
+                
+                let combinedEvidence = g.evidenceAcc.map(ev => typeof ev === 'object' ? JSON.stringify(ev, null, 2) : ev).join('\\n--- \\n');
+                
                 findings.push({
                     ...df,
-                    evidence: f.evidence || f.url,
-                    endpoint: f.url || f.endpoint,
-                    payload: f.payload
+                    description: g.description,
+                    endpoint: epList.length > 1 ? `${baseUrl} (and ${epList.length - 1} related endpoints)` : epList[0],
+                    payload: payloadList.length > 0 ? payloadList.join('\\n') : null,
+                    evidence: epList.length > 1 ? `Vulnerable Endpoints:\\n${epList.join('\\n')}\\n\\nEvidence Details:\\n${combinedEvidence}` : combinedEvidence,
+                    allEndpoints: epList
                 });
             });
         }
@@ -126,7 +173,12 @@ function calculateMetrics(results) {
         attackSurface: results.scanContext?.stats?.uniqueEndpoints || 0,
         scanDuration: results.scanDuration,
         timestamp: results.timestamp,
-        target: results.target || results.url
+        target: results.target || results.url,
+        sslInfo: results.sslInfo,
+        waf: results.waf,
+        domainIntel: results.domainIntel,
+        securityHeaders: results.securityHeaders,
+        technologies: results.technologies
     };
 }
 
@@ -151,7 +203,6 @@ function generateHtml(results) {
         acc[cat].push(f);
         return acc;
     }, {});
-
     const technicalSections = Object.entries(groupedFindings).map(([category, findings]) => `
         <div class="category-block">
             <h3 class="category-title">${category}</h3>
@@ -381,7 +432,7 @@ function generateHtml(results) {
             <div class="report-header">
                 <div class="brand">
                     <div class="logo-icon">🛡️</div>
-                    <div class="logo-text">ANTIGRAVITY <span>PRO</span></div>
+                    <div class="logo-text">Vulnexa <span>PRO</span></div>
                 </div>
                 <div class="meta-info">
                     <div class="meta-label">Assessment Target</div>
@@ -434,13 +485,171 @@ function generateHtml(results) {
                 </div>
             </div>
 
+            <div class="section-h">Infrastructure & Reconnaissance Context</div>
+            <div class="recon-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px;">
+                ${metrics.sslInfo ? `
+                <div class="recon-card" style="background: #fff; padding: 20px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3 style="margin-top:0; font-size:14px; color:var(--primary);"><span style="margin-right:8px;">🔒</span> SSL/TLS Configuration</h3>
+                    <div style="font-size: 13px; line-height: 1.6;">
+                        <strong>Status:</strong> <span style="color: ${metrics.sslInfo.valid ? '#10b981' : '#ef4444'}">${metrics.sslInfo.valid ? 'Valid & Secure' : 'Insecure / Expired'}</span><br>
+                        <strong>Protocol:</strong> ${metrics.sslInfo.protocol || 'Not Available'}<br>
+                        <strong>Issuer:</strong> ${metrics.sslInfo.issuer || 'Not Available'}<br>
+                        <strong>Expires In:</strong> ${metrics.sslInfo.remainingDays || 0} days
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${metrics.waf ? `
+                <div class="recon-card" style="background: #fff; padding: 20px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3 style="margin-top:0; font-size:14px; color:var(--primary);"><span style="margin-right:8px;">🛡️</span> Edge Defense / WAF</h3>
+                    <div style="font-size: 13px; line-height: 1.6;">
+                        <strong>Detected WAF:</strong> ${metrics.waf.name || 'Unknown / None Detected'}<br>
+                        <strong>Confidence:</strong> ${metrics.waf.confidence ? `${metrics.waf.confidence}%` : 'N/A'}<br>
+                        <strong>Evasion Status:</strong> ${metrics.waf.name ? 'Active' : 'Not Required'}
+                    </div>
+                </div>
+                ` : ''}
+
+                ${metrics.domainIntel && metrics.domainIntel.asn ? `
+                <div class="recon-card" style="background: #fff; padding: 20px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3 style="margin-top:0; font-size:14px; color:var(--primary);"><span style="margin-right:8px;">🌐</span> Cloud / ASN Intelligence</h3>
+                    <div style="font-size: 13px; line-height: 1.6;">
+                        <strong>Organization:</strong> ${metrics.domainIntel.asn.organization || 'N/A'}<br>
+                        <strong>Network Route:</strong> ${metrics.domainIntel.asn.route || 'N/A'}<br>
+                        <strong>ASN:</strong> ${metrics.domainIntel.asn.asn || 'N/A'}
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${metrics.securityHeaders ? `
+                <div class="recon-card" style="background: #fff; padding: 20px; border: 1px solid var(--border); border-radius: 8px;">
+                    <h3 style="margin-top:0; font-size:14px; color:var(--primary);"><span style="margin-right:8px;">📝</span> HTTP Security Headers</h3>
+                    <div style="font-size: 13px; line-height: 1.6;">
+                        <strong>Strict-Transport-Security:</strong> ${metrics.securityHeaders['Strict-Transport-Security'] || 'Missing'}<br>
+                        <strong>Content-Security-Policy:</strong> ${metrics.securityHeaders['Content-Security-Policy'] || 'Missing'}<br>
+                        <strong>X-Frame-Options:</strong> ${metrics.securityHeaders['X-Frame-Options'] || 'Missing'}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="section-h">Security Posture & Configuration Checks</div>
+            <div style="background: #fff; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 40px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid var(--border);">
+                        <tr>
+                            <th style="padding: 12px 20px; font-weight: 600; color: var(--text-muted);">Security Control</th>
+                            <th style="padding: 12px 20px; font-weight: 600; color: var(--text-muted);">Status</th>
+                            <th style="padding: 12px 20px; font-weight: 600; color: var(--text-muted);">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 15px 20px; font-weight: 500;">Transport Security (SSL/TLS)</td>
+                            <td style="padding: 15px 20px;">${metrics.sslInfo && metrics.sslInfo.valid ? '<span style="color: #10b981; font-weight: 600;">✅ Secure</span>' : '<span style="color: #ef4444; font-weight: 600;">❌ Insecure</span>'}</td>
+                            <td style="padding: 15px 20px; color: var(--text-muted);">${metrics.sslInfo && metrics.sslInfo.valid ? 'Valid certificate installed and served over HTTPS.' : 'Missing or expired SSL certificate. Data in transit is vulnerable.'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 15px 20px; font-weight: 500;">Directory Listing Exposure</td>
+                            <td style="padding: 15px 20px;">${metrics.findings.some(f => f.key === 'directories') ? '<span style="color: #ef4444; font-weight: 600;">❌ Vulnerable</span>' : '<span style="color: #10b981; font-weight: 600;">✅ Secure</span>'}</td>
+                            <td style="padding: 15px 20px; color: var(--text-muted);">${metrics.findings.some(f => f.key === 'directories') ? 'Sensitive directories or files are publicly accessible.' : 'No exposed internal directories detected.'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 15px 20px; font-weight: 500;">HTTP Security Headers</td>
+                            <td style="padding: 15px 20px;">${metrics.securityHeaders && Object.values(metrics.securityHeaders).some(v => v !== 'Missing' && v !== 'Not Enabled') ? '<span style="color: #10b981; font-weight: 600;">✅ Hardened</span>' : '<span style="color: #eab308; font-weight: 600;">⚠️ Weak</span>'}</td>
+                            <td style="padding: 15px 20px; color: var(--text-muted);">${metrics.securityHeaders && Object.values(metrics.securityHeaders).some(v => v !== 'Missing' && v !== 'Not Enabled') ? 'Modern security headers (CSP, HSTS) are actively enforced.' : 'Basic security headers are missing, increasing risk of XSS and clickjacking.'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 15px 20px; font-weight: 500;">Admin / Default Panel Protection</td>
+                            <td style="padding: 15px 20px;">${metrics.findings.some(f => f.key === 'adminPanels') ? '<span style="color: #ef4444; font-weight: 600;">❌ Exposed</span>' : '<span style="color: #10b981; font-weight: 600;">✅ Secure</span>'}</td>
+                            <td style="padding: 15px 20px; color: var(--text-muted);">${metrics.findings.some(f => f.key === 'adminPanels') ? 'A default administrative interface is accessible from the internet.' : 'No easily guessable admin panels or login portals found.'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
             <div class="section-h">Technical Findings & Forensics</div>
             ${technicalSections.length > 0 ? technicalSections : '<p style="text-align: center; padding: 80px; color: var(--text-muted); background: #f8fafc; border-radius: 12px;">No automated vulnerabilities were identified in this session.</p>'}
+            
+            ${(results.attackChains && results.attackChains.length > 0) ? `
+            <div class="category-block" style="border: 2px solid #ef4444; border-radius: 8px; padding: 25px; background: #fff1f2; margin-top: 40px; page-break-before: always;">
+                <h3 style="color: #b91c1c; font-size: 20px; display: flex; align-items: center; gap: 10px; margin-top: 0; margin-bottom: 20px;">
+                    🧨 Chained Exploit Paths (Attack Graph)
+                </h3>
+                <p style="color: #991b1b; font-size: 14px; margin-bottom: 25px;">
+                    The AI behavioral engine discovered the following multi-stage exploitation vectors where chained vulnerabilities lead to critical compromise.
+                </p>
+                ${results.attackChains.map(chain => `
+                    <div style="background: #fff; padding: 20px; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <span style="font-weight: 800; color: #b91c1c; font-size: 16px;">${chain.name}</span>
+                            <span style="background: #ef4444; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold;">
+                                ${chain.severity} (Confidence: ${(chain.confidence * 100).toFixed(0)}%)
+                            </span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                            ${chain.path.map((step, i) => `
+                                <span style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">${step}</span>
+                                ${i < chain.path.length - 1 ? '<span style="color: #9ca3af; font-weight: bold;">→</span>' : ''}
+                            `).join('')}
+                        </div>
+                        <p style="font-size: 13px; color: #4b5563; line-height: 1.6; margin: 0;">${chain.description}</p>
+                    </div>
+                `).join('')}
+            </div>` : ''}
+
+            ${(results.suspiciousScripts && results.suspiciousScripts.length > 0) ? `
+            <div class="category-block" style="margin-top: 40px;">
+                <h3 class="category-title">Suspicious Scripts & Code execution Risks</h3>
+                ${results.suspiciousScripts.map(script => `
+                    <div style="background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="font-weight: bold; margin-bottom: 10px; word-break: break-all; font-size: 13px; color: var(--primary);">Source: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${script.source || 'Inline Content'}</code></div>
+                        ${script.humanIssues.map(issue => `
+                            <div style="padding: 12px; background: #f8fafc; border-left: 4px solid #f59e0b; margin-top: 10px; font-size: 13px;">
+                                <strong style="color: #b45309;">${issue.details.title}</strong>: ${issue.details.explanation}
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>` : ''}
+
+            ${(results.domainIntel && (results.domainIntel.jsRecon || results.domainIntel.githubRecon)) ? `
+            <div class="category-block" style="margin-top: 40px; background: #0f172a; color: white; padding: 30px; border-radius: 12px; page-break-inside: avoid;">
+                <h3 style="color: #38bdf8; font-size: 18px; margin-top: 0; margin-bottom: 25px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">🕵️ Hacker OSINT & Intelligence Mining</h3>
+                
+                ${results.domainIntel.jsRecon ? `
+                <div style="margin-top: 20px;">
+                    <h4 style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">JavaScript Analysis</h4>
+                    <div style="display: flex; gap: 30px; font-size: 14px;">
+                        <div><strong style="color: #e2e8f0;">Endpoints Found:</strong> <span style="color: #38bdf8">${results.domainIntel.jsRecon.endpoints?.length || 0}</span></div>
+                        <div><strong style="color: #e2e8f0;">Secrets Leaked:</strong> <span style="color: ${results.domainIntel.jsRecon.secrets?.length > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">${results.domainIntel.jsRecon.secrets?.length || 0}</span></div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${results.domainIntel.githubRecon ? `
+                <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+                    <h4 style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">GitHub Exposure</h4>
+                    <div style="font-size: 14px; color: #cbd5e1;">
+                        Found <strong style="color: white">${results.domainIntel.githubRecon.repositories?.length || 0}</strong> related repositories and <strong style="color: ${results.domainIntel.githubRecon.leaks?.length > 0 ? '#ef4444' : 'white'}">${results.domainIntel.githubRecon.leaks?.length || 0}</strong> potential code leaks.
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${results.behaviorProfiling ? `
+                <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+                    <h4 style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Behavioral Engine Profiler</h4>
+                    <div style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">
+                        Sent <strong style="color: white">${results.behaviorProfiling.payloadsSent || 0}</strong> blind payloads and confirmed <strong style="color: ${results.behaviorProfiling.anomalies?.length > 0 ? '#ef4444' : '#10b981'}">${results.behaviorProfiling.anomalies?.length || 0}</strong> behavioral anomalies via timing and length variance mapping.
+                    </div>
+                </div>
+                ` : ''}
+            </div>` : ''}
 
             <div class="footer">
                 <strong>CONFIDENTIAL DOCUMENT</strong><br>
                 This report contains sensitive security findings. Access should be restricted to authorized technical management.<br>
-                &copy; ${new Date().getFullYear()} Antigravity Security Systems. All rights reserved.
+                &copy; ${new Date().getFullYear()} Vulnexa Security Systems. All rights reserved. Made by Akshat Jain.
             </div>
         </div>
     </body>

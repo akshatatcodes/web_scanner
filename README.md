@@ -1,4 +1,4 @@
-# 🛡️ Web Security Exposure Analyzer
+# 🛡️ Vulnexa
 
 A professional-grade, multi-phase security scanning engine designed to identify technology stacks, discover vulnerabilities, and perform behavioral analysis on web applications.
 

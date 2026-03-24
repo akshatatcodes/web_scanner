@@ -12,7 +12,8 @@ class SSLScanner {
      */
     async scan(url) {
         try {
-            const hostname = new URL(url).hostname;
+            const targetUrl = url.startsWith('http') ? url : `https://${url}`;
+            const hostname = new URL(targetUrl).hostname;
             const certInfo = await this.getCertificate(hostname);
             const httpsEnforced = await this.checkHttpsEnforcement(hostname);
 
@@ -26,8 +27,10 @@ class SSLScanner {
             return {
                 valid: false,
                 error: error.message,
-                protocol: 'Unknown',
-                cipher: 'Unknown'
+                protocol: 'Not Available',
+                cipher: 'Not Available',
+                issuer: 'Not Available',
+                remainingDays: 0
             };
         }
     }
@@ -54,7 +57,12 @@ class SSLScanner {
                 if (!cert || Object.keys(cert).length === 0) {
                     resolve({
                         valid: false,
-                        error: 'No certificate found'
+                        error: 'No certificate found',
+                        protocol: protocol || 'Not Available',
+                        isProtocolSecure: false,
+                        cipher: cipher ? cipher.name : 'Not Available',
+                        issuer: 'Not Available',
+                        remainingDays: 0
                     });
                     return;
                 }
@@ -76,21 +84,35 @@ class SSLScanner {
                     validFrom: cert.valid_from,
                     validTo: cert.valid_to,
                     remainingDays: Math.floor((validTo - now) / (1000 * 60 * 60 * 24)),
-                    protocol: protocol,
+                    protocol: protocol || 'Not Available',
                     isProtocolSecure,
-                    cipher: cipher.name,
-                    bits: cipher.bits,
+                    cipher: cipher ? cipher.name : 'Not Available',
+                    bits: cipher ? cipher.bits : null,
                     fingerprint: cert.fingerprint
                 });
             });
 
             req.on('error', (e) => {
-                resolve({ valid: false, error: e.message });
+                resolve({ 
+                    valid: false, 
+                    error: e.message,
+                    protocol: 'Not Available',
+                    cipher: 'Not Available',
+                    issuer: 'Not Available',
+                    remainingDays: 0
+                });
             });
 
             req.on('timeout', () => {
                 req.destroy();
-                resolve({ valid: false, error: 'Connection timeout' });
+                resolve({ 
+                    valid: false, 
+                    error: 'Connection timeout',
+                    protocol: 'Not Available',
+                    cipher: 'Not Available',
+                    issuer: 'Not Available',
+                    remainingDays: 0 
+                });
             });
 
             req.setTimeout(5000);

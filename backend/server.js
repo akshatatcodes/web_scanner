@@ -10,6 +10,7 @@ const attackLogger = require('./utils/attackLogger');
 const aiService = require('./services/aiService');
 const reportGenerator = require('./utils/reportGenerator');
 const persistence = require('./utils/persistence');
+const crypto = require('crypto');
 require('./worker'); // start the worker
 
 
@@ -52,6 +53,7 @@ app.post('/api/scan', async (req, res) => {
       type: "basic-scan",
       target: targetUrl.href,
     }, {
+      jobId: crypto.randomUUID(),
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
       timeout: 300000 // 5 minutes
@@ -82,6 +84,7 @@ app.post('/api/scan-ports', async (req, res) => {
       type: "port-scan",
       target: targetUrl.hostname,
     }, {
+      jobId: crypto.randomUUID(),
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
       timeout: 300000 // 5 minutes
@@ -102,6 +105,7 @@ app.post('/api/deep-crawl', async (req, res) => {
       type: "deep-crawl",
       target: targetUrl.href,
     }, {
+      jobId: crypto.randomUUID(),
       attempts: 3,
       backoff: { type: "exponential", delay: 2000 },
       timeout: 300000 // 5 minutes
@@ -194,7 +198,7 @@ app.get('/api/reports/:format/:jobId', async (req, res) => {
     try {
         // 1. Check if report already exists on disk (cache)
         const existingPath = await persistence.getReport(jobId, format);
-        if (existingPath) {
+        if (existingPath && format !== 'html') {
             console.log(`[Reports] Serving cached report for job: ${jobId}`);
             return res.sendFile(existingPath);
         }

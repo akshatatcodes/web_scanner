@@ -203,7 +203,17 @@ function App() {
   return (
     <div className="app-container">
       <header>
-        <div className="logo">SUPER ANALYZER PRO</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '10px' }}>
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)', filter: 'drop-shadow(0px 0px 8px rgba(59, 130, 246, 0.4))' }}>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+            <circle cx="12" cy="12" r="8" strokeDasharray="2 4" strokeWidth="0.5" />
+            <path d="M8 12h8" strokeWidth="0.5" />
+            <path d="M12 8l-4 4 4 4" strokeWidth="0.5" />
+          </svg>
+          <div className="logo" style={{ margin: 0, fontSize: '2.5rem', letterSpacing: '2px' }}>Vulnexa</div>
+        </div>
         <h1>Security Exposure Analyzer</h1>
         <p className="subtitle">
           Professional-grade security scanning for technologies, cookies, and suspicious scripts.
@@ -432,16 +442,16 @@ function App() {
                       <div className="ssl-item">
                         <span className="ssl-label">Expiry:</span>
                         <span className={`ssl-val ${results.sslInfo.remainingDays < 30 ? 'neg' : ''}`}>
-                          {results.sslInfo.validTo ? new Date(results.sslInfo.validTo).toLocaleDateString() : 'Unknown'} ({results.sslInfo.remainingDays} days left)
+                          {results.sslInfo.validTo ? new Date(results.sslInfo.validTo).toLocaleDateString() : 'Unknown'} ({results.sslInfo.remainingDays || 0} days left)
                         </span>
                       </div>
                       <div className="ssl-item">
                         <span className="ssl-label">Cipher:</span>
-                        <span className="ssl-val small-font">{results.sslInfo.cipher}</span>
+                        <span className="ssl-val small-font">{results.sslInfo.cipher || 'Not Available'}</span>
                       </div>
                       <div className="ssl-item">
                         <span className="ssl-label">Issuer:</span>
-                        <span className="ssl-val">{results.sslInfo.issuer}</span>
+                        <span className="ssl-val">{results.sslInfo.issuer || 'Not Available'}</span>
                       </div>
                     </div>
                   </div>
@@ -477,16 +487,24 @@ function App() {
               </div>
 
               {/* 5. Domain Intelligence & OSINT */}
-              <DomainIntelligence domainIntel={results.domainIntel} />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <DomainIntelligence domainIntel={results.domainIntel} />
+              </div>
 
               {/* 6. Hacker OSINT & Recon Intelligence (ReconDashboard) */}
-              <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <ReconDashboard domainIntel={results.domainIntel} behaviorProfiling={results.behaviorProfiling} />
+              </div>
 
               {/* Attack Chains */}
-              <AttackChainView chains={results.attackChains} />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <AttackChainView chains={results.attackChains} />
+              </div>
 
               {/* Suspicious Scripts */}
-              <SuspiciousScripts scripts={results.suspiciousScripts} />
+              <div style={{ gridColumn: '1 / -1' }}>
+                <SuspiciousScripts scripts={results.suspiciousScripts} />
+              </div>
 
               {/* Port Scans */}
               <PortScanResults targetUrl={results.target || results.url} />

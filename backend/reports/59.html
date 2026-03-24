@@ -1,0 +1,529 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Security Assessment Report - gujjufurniture.in</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+            :root {
+                --primary: #0f172a;
+                --primary-light: #1e293b;
+                --accent: #3b82f6;
+                --text-dark: #0f172a;
+                --text-muted: #64748b;
+                --bg: #f8fafc;
+                --white: #ffffff;
+                --border: #e2e8f0;
+            }
+            body { 
+                font-family: 'Inter', sans-serif; 
+                line-height: 1.5; 
+                color: var(--text-dark); 
+                background: var(--bg);
+                margin: 0;
+                padding: 0;
+            }
+            .page {
+                max-width: 1000px;
+                margin: 0 auto;
+                background: var(--white);
+                min-height: 297mm;
+                padding: 60px 80px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            }
+            
+            /* Header & Branding */
+            .report-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 60px;
+                border-bottom: 4px solid var(--primary);
+                padding-bottom: 30px;
+            }
+            .brand { display: flex; align-items: center; gap: 15px; }
+            .logo-icon { font-size: 42px; }
+            .logo-text { font-size: 24px; font-weight: 800; color: var(--primary); letter-spacing: -1px; }
+            .logo-text span { color: var(--accent); }
+            
+            .meta-info { text-align: right; }
+            .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+            .meta-value { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+            /* Executive Banner */
+            .exec-banner {
+                background: var(--primary);
+                color: var(--white);
+                padding: 40px;
+                border-radius: 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 50px;
+            }
+            .exec-title h1 { margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+            .exec-title p { margin: 10px 0 0 0; opacity: 0.7; font-size: 16px; }
+            
+            .risk-meter {
+                text-align: center;
+                border: 4px solid rgba(255,255,255,0.1);
+                padding: 20px 30px;
+                border-radius: 16px;
+                background: rgba(255,255,255,0.03);
+            }
+            .risk-score { font-size: 48px; font-weight: 800; line-height: 1; }
+            .risk-lvl { font-size: 14px; font-weight: 700; text-transform: uppercase; margin-top: 5px; padding: 4px 12px; border-radius: 4px; }
+
+            /* Section Styling */
+            .section-h {
+                font-size: 11px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: var(--accent);
+                margin: 60px 0 20px 0;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+            }
+            .section-h::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+            /* Risk Matrix */
+            .matrix-container {
+                display: flex;
+                gap: 40px;
+                align-items: center;
+                margin-bottom: 40px;
+                background: #f1f5f9;
+                padding: 30px;
+                border-radius: 12px;
+            }
+            .matrix-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 40px);
+                gap: 4px;
+            }
+            .matrix-cell { width: 40px; height: 40px; border-radius: 4px; }
+            .m-low { background: #dcfce7; }
+            .m-med { background: #fef9c3; }
+            .m-high { background: #ffedd5; }
+            .m-crit { background: #fee2e2; }
+            .m-active { border: 3px solid var(--primary); box-shadow: 0 0 10px rgba(0,0,0,0.2); position: relative; }
+            .m-active::after { content: "!"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 900; }
+
+            .matrix-desc { flex: 1; }
+            .matrix-desc h3 { margin: 0 0 10px 0; font-size: 18px; }
+            .matrix-desc p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+            /* Metrics Grid */
+            .metrics-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 20px;
+                margin-bottom: 40px;
+            }
+            .metric-card {
+                padding: 20px;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                text-align: center;
+            }
+            .metric-value { font-size: 28px; font-weight: 800; color: var(--primary); }
+            .metric-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-top: 5px; }
+
+            /* Finding Blocks */
+            .category-block { margin-bottom: 40px; }
+            .category-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+            
+            .finding-card {
+                border-left: 6px solid #ddd;
+                padding: 25px;
+                margin-bottom: 25px;
+                background: #fff;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+                border-radius: 0 8px 8px 0;
+            }
+            .finding-card.critical { border-left-color: #dc2626; background: #fff1f2; }
+            .finding-card.high { border-left-color: #f97316; background: #fff7ed; }
+            .finding-card.medium { border-left-color: #eab308; background: #fefce8; }
+            .finding-card.low { border-left-color: #2563eb; background: #eff6ff; }
+
+            .finding-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+            .sev-badge { color: white; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+            .finding-title { font-size: 16px; font-weight: 700; color: var(--primary); flex: 1; }
+
+            .finding-body p { margin: 8px 0; font-size: 14px; }
+            .finding-body code { font-family: 'JetBrains Mono', monospace; font-size: 13px; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; }
+
+            .exploit-proof {
+                margin-top: 20px;
+                background: var(--white);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 20px;
+            }
+            .proof-header { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-muted); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+            
+            pre.evidence {
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: 20px;
+                border-radius: 6px;
+                font-size: 12px;
+                overflow-x: auto;
+                margin-top: 10px;
+            }
+            .payload { color: #f43f5e; font-weight: 700; background: transparent !important; padding: 0 !important; }
+
+            .footer {
+                margin-top: 80px;
+                text-align: center;
+                font-size: 11px;
+                color: var(--text-muted);
+                border-top: 1px solid var(--border);
+                padding-top: 40px;
+            }
+
+            @media print {
+                body { background: white; }
+                .page { box-shadow: none; padding: 0; }
+                .finding-card { page-break-inside: avoid; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="page">
+            <div class="report-header">
+                <div class="brand">
+                    <div class="logo-icon">🛡️</div>
+                    <div class="logo-text">Vulnexa <span>PRO</span></div>
+                </div>
+                <div class="meta-info">
+                    <div class="meta-label">Assessment Target</div>
+                    <div class="meta-value">gujjufurniture.in</div>
+                    <div class="meta-label">Scan Completion Date</div>
+                    <div class="meta-value">24/3/2026, 9:16:38 am</div>
+                </div>
+            </div>
+
+            <div class="exec-banner">
+                <div class="exec-title">
+                    <h1>Executive Summary</h1>
+                    <p>Proprietary Security Exposure Assessment for gujjufurniture.in</p>
+                </div>
+                <div class="risk-meter">
+                    <div class="risk-score">100<span>/100</span></div>
+                    <div class="risk-lvl" style="background: #f97316">POSTURE: HIGH</div>
+                </div>
+            </div>
+
+            <div class="section-h">Risk Posture Analysis</div>
+            <div class="matrix-container">
+                <div class="matrix-grid">
+                    <div class="matrix-cell m-crit "></div><div class="matrix-cell m-crit "></div><div class="matrix-cell m-crit "></div><div class="matrix-cell m-crit "></div><div class="matrix-cell m-crit "></div><div class="matrix-cell m-high "></div><div class="matrix-cell m-high m-active"></div><div class="matrix-cell m-high "></div><div class="matrix-cell m-high "></div><div class="matrix-cell m-high "></div><div class="matrix-cell m-med "></div><div class="matrix-cell m-med "></div><div class="matrix-cell m-med "></div><div class="matrix-cell m-med "></div><div class="matrix-cell m-med "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div><div class="matrix-cell m-low "></div>
+                </div>
+                <div class="matrix-desc">
+                    <h3>Risk Impact vs. Probability</h3>
+                    <p>Based on our automated analysis, the target application demonstrates a <strong>HIGH</strong> operational risk profile. This score integrates vulnerability counts, exploitability, and potential business impact of confirmed threats.</p>
+                </div>
+            </div>
+
+            <div class="metrics-grid">
+                
+        <div class="metric-card">
+            <div class="metric-label" style="color: #dc2626">Critical</div>
+            <div class="metric-value">1</div>
+        </div>
+    
+        <div class="metric-card">
+            <div class="metric-label" style="color: #f97316">High</div>
+            <div class="metric-value">9</div>
+        </div>
+    
+        <div class="metric-card">
+            <div class="metric-label" style="color: #eab308">Medium</div>
+            <div class="metric-value">2</div>
+        </div>
+    
+        <div class="metric-card">
+            <div class="metric-label" style="color: #2563eb">Low</div>
+            <div class="metric-value">2</div>
+        </div>
+    
+        <div class="metric-card">
+            <div class="metric-label" style="color: #64748b">Info</div>
+            <div class="metric-value">0</div>
+        </div>
+    
+                <div class="metric-card">
+                    <div class="metric-value">1</div>
+                    <div class="metric-label">Identified Endpoints</div>
+                </div>
+            </div>
+
+            <div class="section-h">Technical Findings & Forensics</div>
+            
+        <div class="category-block">
+            <h3 class="category-title">A06:2021-Vulnerable and Outdated Components</h3>
+            
+                <div class="finding-card medium">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #eab308">Medium</span>
+                        <span class="finding-title">CVE-2007-3205</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> The parse_str function in (1) PHP, (2) Hardened-PHP, and (3) Suhosin, when called without a second parameter, might allow remote attackers to overwrite arbitrary variables by specifying variable names and values in the string to be parsed.  NOTE: it is not clear whether this is a design limitation of the function or a bug in PHP, although it is likely to be regarded as a bug in Hardened-PHP and Suhosin.</p>
+                        <p><strong>Technical Context:</strong> <code>Vulnerability Scanner (PHP)</code></p>
+                        
+                        
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">CVE-2013-2220</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> Buffer overflow in the radius_get_vendor_attr function in the Radius extension before 1.2.7 for PHP allows remote attackers to cause a denial of service (crash) and possibly execute arbitrary code via a large Vendor Specific Attributes (VSA) length value.</p>
+                        <p><strong>Technical Context:</strong> <code>Vulnerability Scanner (PHP)</code></p>
+                        
+                        
+                        
+                    </div>
+                </div>
+                <div class="finding-card critical">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #dc2626">Critical</span>
+                        <span class="finding-title">CVE-2024-3566</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> A command inject vulnerability allows an attacker to perform command injection on Windows applications that indirectly depend on the CreateProcess function when the specific conditions are satisfied.</p>
+                        <p><strong>Technical Context:</strong> <code>Vulnerability Scanner (PHP)</code></p>
+                        
+                        
+                        
+                    </div>
+                </div>
+                <div class="finding-card medium">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #eab308">Medium</span>
+                        <span class="finding-title">CVE-2025-6491</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> In PHP versions:8.1.* before 8.1.33, 8.2.* before 8.2.29, 8.3.* before 8.3.23, 8.4.* before 8.4.10 when parsing XML data in SOAP extensions, overly large (>2Gb) XML namespace prefix may lead to null pointer dereference. This may lead to crashes and affect the availability of the target server.</p>
+                        <p><strong>Technical Context:</strong> <code>Vulnerability Scanner (PHP)</code></p>
+                        
+                        
+                        
+                    </div>
+                </div>
+                <div class="finding-card low">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #2563eb">Low</span>
+                        <span class="finding-title">CVE-2025-1220</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> In PHP versions:8.1.* before 8.1.33, 8.2.* before 8.2.29, 8.3.* before 8.3.23, 8.4.* before 8.4.10 some functions like fsockopen() lack validation that the hostname supplied does not contain null characters. This may lead to other functions like parse_url() treat the hostname in different way, thus opening way to security problems if the user code implements access checks before access using such functions.</p>
+                        <p><strong>Technical Context:</strong> <code>Vulnerability Scanner (PHP)</code></p>
+                        
+                        
+                        
+                    </div>
+                </div>
+        </div>
+    
+        <div class="category-block">
+            <h3 class="category-title">A00:2021-General Security</h3>
+            
+                <div class="finding-card low">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #2563eb">Low</span>
+                        <span class="finding-title">Unsafe HTML Assignment (innerHTML)</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> The script assigns content to innerHTML. If this content is not properly sanitized, it can execute scripts embedded in the HTML.</p>
+                        <p><strong>Technical Context:</strong> <code>Script: inline-script</code></p>
+                        <p><strong>Remediation:</strong> Use element.textContent for plain text or use a trusted sanitization library (like DOMPurify) before using innerHTML.</p>
+                        
+                        
+                    </div>
+                </div>
+        </div>
+    
+        <div class="category-block">
+            <h3 class="category-title">A10:2021-Server-Side Request Forgery</h3>
+            
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?url=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?url=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?url=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?dest=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?dest=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?dest=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?webhook=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?webhook=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?webhook=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?proxy=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?proxy=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?proxy=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?uri=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?uri=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?uri=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?path=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?path=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?path=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?continue=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?continue=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?continue=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="finding-card high">
+                    <div class="finding-header">
+                        <span class="sev-badge" style="background: #f97316">High</span>
+                        <span class="finding-title">SSRF Vulnerability</span>
+                    </div>
+                    <div class="finding-body">
+                        <p><strong>Observation:</strong> No description provided.</p>
+                        <p><strong>Technical Context:</strong> <code>https://gujjufurniture.in/?window=http://169.254.169.254/latest/meta-data/</code></p>
+                        
+                        
+                        
+                        <div class="exploit-proof">
+                            <div class="proof-header">Forensic Evidence & Exploit Proof</div>
+                            <p><strong>Affected URL:</strong> <code>https://gujjufurniture.in/?window=http://169.254.169.254/latest/meta-data/</code></p>
+                            
+                            <pre class="evidence">https://gujjufurniture.in/?window=http://169.254.169.254/latest/meta-data/</pre>
+                        </div>
+                        
+                    </div>
+                </div>
+        </div>
+    
+
+            <div class="footer">
+                <strong>CONFIDENTIAL DOCUMENT</strong><br>
+                This report contains sensitive security findings. Access should be restricted to authorized technical management.<br>
+                &copy; 2026 Vulnexa Security Systems. All rights reserved. Made by Akshat Jain.
+            </div>
+        </div>
+    </body>
+    </html>
+    

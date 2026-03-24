@@ -99,8 +99,10 @@ class CrawlerService {
                 console.log(`[Crawler] (${this.visited.size}/${this.maxPages}) Crawling: ${url} (Depth: ${depth})`);
 
                 try {
-                    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-                    await this.wait(this.delay);
+                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(err => {
+                        console.log(`[Crawler] Navigation bounded/timeout on ${url}, but proceeding with extraction...`);
+                    });
+                    await this.wait(this.delay + 2000);
 
                     // 4. Extract Static Assets
                     const pageResults = await page.evaluate(() => {
@@ -233,10 +235,10 @@ class CrawlerService {
             // Find clickable elements that don't look like logout or delete
             const buttons = await page.$$('button, input[type="submit"], [role="button"]');
             for (const button of buttons.slice(0, 5)) { // Limit interactions
-                const text = await page.evaluate(el => el.innerText.toLowerCase(), button);
+                const text = await page.evaluate(el => el.innerText.toLowerCase(), button).catch(() => '');
                 if (['login', 'submit', 'search', 'filter', 'go', 'send'].some(k => text.includes(k))) {
                     console.log(`[Crawler] Strategically clicking: ${text}`);
-                    await button.click();
+                    await button.click().catch(() => {});
                     await this.wait(1000); // Wait for potential dynamic load
                 }
             }
