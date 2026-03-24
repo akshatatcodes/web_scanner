@@ -35,6 +35,7 @@ const { scanJWT } = require('./scanners/jwtScanner');
 const { generateSummary } = require('./utils/reportSummary');
 const { CrawlerService } = require('./services/crawlerService');
 const axios = require('axios');
+const https = require('https');
 const cheerio = require('cheerio');
 const { URL } = require('url');
 const technologies = require('./rules/technologies');
@@ -69,6 +70,7 @@ async function run(url, options = {}) {
             axios.get(url, {
                 timeout: 60000,
                 validateStatus: null,
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
             }).catch(e => {
                 let reason = e.message;
