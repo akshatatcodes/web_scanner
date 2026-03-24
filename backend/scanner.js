@@ -9,8 +9,8 @@ async function scanUrl(url, options = {}) {
         const results = await engine.run(url, options);
         return results;
     } catch (err) {
-        console.error('Scanner Proxy Error:', err.message);
-        throw new Error(`Failed to complete SUPER scan: ${err.message}`);
+        console.error('Scanner Proxy Error:', err.message || err);
+        throw new Error(`Failed to complete Vulnexa scan: ${err.message || JSON.stringify(err)}`);
     }
 }
 
