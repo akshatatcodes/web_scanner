@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
+
 const PortScanResults = ({ targetUrl }) => {
     const [permission, setPermission] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -15,7 +17,7 @@ const PortScanResults = ({ targetUrl }) => {
         setError(null);
         setScanResults(null);
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/scan-ports`, {
+            const response = await fetch(`${API_BASE}/api/scan-ports`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: targetUrl, permission })
@@ -28,7 +30,7 @@ const PortScanResults = ({ targetUrl }) => {
             
             const poll = setInterval(async () => {
                 try {
-                    const statusRes = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/jobs/${jobId}`);
+                    const statusRes = await fetch(`${API_BASE}/api/jobs/${jobId}`);
                     const statusData = await statusRes.json();
                     
                     if (statusData.state === 'completed') {

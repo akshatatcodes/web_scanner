@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
+
 const severityColor = {
     CRITICAL: 'var(--danger)',
     HIGH: '#f97316',
@@ -12,22 +14,26 @@ const ProofModal = ({ proof, onClose }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [aiAnalysis, setAiAnalysis] = useState(null);
     const [isAiLoading, setIsAiLoading] = useState(false);
+    const [aiError, setAiError] = useState(null);
 
     if (!proof) return null;
 
     const fetchAIAnalysis = async () => {
         if (aiAnalysis || isAiLoading) return;
         setIsAiLoading(true);
+        setAiError(null);
         try {
-            const resp = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/ai/analyze`, {
+            const resp = await fetch(`${API_BASE}/api/ai/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ finding: proof })
             });
+            if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
             const data = await resp.json();
             setAiAnalysis(data);
         } catch (e) {
             console.error("AI Fetch error:", e);
+            setAiError(e.message || 'Failed to reach backend.');
         } finally {
             setIsAiLoading(false);
         }
@@ -277,7 +283,8 @@ const ProofModal = ({ proof, onClose }) => {
                             </>
                         ) : (
                             <div style={{ color: 'var(--danger)', textAlign: 'center', padding: '2rem', background: 'rgba(239,68,68,0.05)', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.1)' }}>
-                                ⚠️ AI Analysis failed to load. Please ensure the backend server is running.
+                                ⚠️ {aiError || 'AI Analysis failed to load. Please ensure the backend server is running.'}
+                                {aiError && <div style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--text-muted)' }}>Check that VITE_API_BASE is correctly set in Vercel.</div>}
                             </div>
                         )}
                     </div>
