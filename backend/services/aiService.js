@@ -5,10 +5,12 @@
 
 const MOCK_DELAY = 1500;
 
+const axios = require('axios');
+
 class AIService {
     constructor() {
-        this.apiKey = process.env.AI_API_KEY || null;
-        this.provider = process.env.AI_PROVIDER || 'openai'; // or 'gemini'
+        this.geminiKey = process.env.GEMINI_API_KEY || null;
+        this.openAiKey = process.env.OPENAI_API_KEY || null;
     }
 
     /**
@@ -16,15 +18,79 @@ class AIService {
      * @param {object} finding - The finding object with .proof, .message, etc.
      */
     async analyze(finding) {
-        if (!this.apiKey) {
+        if (!this.geminiKey && !this.openAiKey) {
             return this.getMockAnalysis(finding);
         }
 
-        // Logic for real AI providers would go here (axios.post to OpenAI/Gemini)
-        // Redacting sensitive data before sending is handled by proofStore, 
-        // but we'd add another layer here if needed.
+        try {
+            if (this.geminiKey) {
+                return await this.callGemini(finding);
+            } else if (this.openAiKey) {
+                return await this.callOpenAI(finding);
+            }
+        } catch (error) {
+            console.error('[AI Service Error]:', error.response?.data || error.message);
+            // Fallback to mock if API fails (e.g., rate limits)
+            const fallback = await this.getMockAnalysis(finding);
+            fallback.explanation = `[API Error: ${error.message}] ` + fallback.explanation;
+            return fallback;
+        }
+    }
+
+    async callGemini(finding) {
+        const payload = `Analyze this vulnerability finding: ${JSON.stringify(finding)}. Explain the security impact, determine if it's a false positive based on the proof, and provide a secure fix (code snippet). Respond entirely in clean JSON format without markdown wrapping, using exactly these keys: "confidence" (float), "isFalsePositive" (boolean), "explanation" (string), "fix" (string).`;
         
-        return this.getMockAnalysis(finding); // Defaulting to mock for now
+        // Retry logic for Google API 503 limits
+        let response;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                response = await axios.post(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.geminiKey}`, {
+                    contents: [{ parts: [{ text: payload }] }]
+                });
+                break; // success
+            } catch (err) {
+                if (err.response?.status === 503 && attempt < 3) {
+                    await new Promise(r => setTimeout(r, 2000 * attempt));
+                } else {
+                    throw err;
+                }
+            }
+        }
+        
+        const textResponse = response.data.candidates[0].content.parts[0].text;
+        const cleanJson = textResponse.replace(/^```json\n?|\n?```$/gm, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        
+        return {
+            ...parsed,
+            analyzedAt: new Date().toISOString(),
+            provider: 'Gemini-2.5-Flash'
+        };
+    }
+
+    async callOpenAI(finding) {
+        // Automatically determine if it's Groq by key prefix
+        const isGroq = this.openAiKey.startsWith('gsk_');
+        const baseURL = isGroq ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+        const model = isGroq ? 'llama3-8b-8192' : 'gpt-3.5-turbo';
+
+        const response = await axios.post(baseURL, {
+            model: model,
+            messages: [
+                { role: 'system', content: 'You are an elite application security engineer. Return exactly one JSON object resolving the vulnerability with keys: "confidence" (float), "isFalsePositive" (boolean), "explanation" (string), "fix" (string).' },
+                { role: 'user', content: `Analyze: ${JSON.stringify(finding)}` }
+            ],
+            response_format: { type: "json_object" }
+        }, {
+            headers: { 'Authorization': `Bearer ${this.openAiKey}`, 'Content-Type': 'application/json' }
+        });
+        
+        const parsed = JSON.parse(response.data.choices[0].message.content);
+        return {
+            ...parsed,
+            analyzedAt: new Date().toISOString(),
+            provider: isGroq ? 'Groq Llama-3' : 'OpenAI GPT'
+        };
     }
 
     async getMockAnalysis(finding) {
@@ -75,7 +141,7 @@ class AIService {
         return {
             ...(analyses[type] || defaultAnalysis),
             analyzedAt: new Date().toISOString(),
-            provider: this.apiKey ? this.provider : 'Mock-Engine-v1'
+            provider: 'Mock-Engine-v1'
         };
     }
 }
