@@ -10,7 +10,11 @@ async function scanUrl(url, options = {}) {
         return results;
     } catch (err) {
         console.error('Scanner Proxy Error:', err.message || err);
-        throw new Error(`Failed to complete Vulnexa scan: ${err.message || JSON.stringify(err)}`);
+        let errorMsg = err.message;
+        if (err.name === 'AggregateError' && err.errors && err.errors.length > 0) {
+            errorMsg = err.errors.map(e => e.message || e.code).join(', ');
+        }
+        throw new Error(`Failed to complete Vulnexa scan: ${errorMsg || 'Unknown error occurred'}`);
     }
 }
 

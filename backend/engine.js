@@ -70,6 +70,12 @@ async function run(url, options = {}) {
                 timeout: 60000,
                 validateStatus: null,
                 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+            }).catch(e => {
+                let reason = e.message;
+                if (e.code === 'ETIMEDOUT' || e.code === 'ECONNABORTED') reason = 'Connection timed out';
+                else if (e.code === 'ENOTFOUND') reason = 'Domain not found';
+                else if (e.name === 'AggregateError' && e.errors?.length) reason = e.errors[0].message || e.errors[0].code;
+                throw new Error(`Target is unreachable: ${reason}`);
             }),
             dnsScanner.scan(domain).catch(e => {
                 attackLogger.log({ type: 'ERROR', scanner: 'DNS', url: domain, result: `DNS scan failed: ${e.message}` });
