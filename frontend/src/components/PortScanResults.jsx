@@ -15,7 +15,7 @@ const PortScanResults = ({ targetUrl }) => {
         setError(null);
         setScanResults(null);
         try {
-            const response = await fetch('http://localhost:5000/api/scan-ports', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/scan-ports`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: targetUrl, permission })
@@ -28,7 +28,7 @@ const PortScanResults = ({ targetUrl }) => {
             
             const poll = setInterval(async () => {
                 try {
-                    const statusRes = await fetch(`http://localhost:5000/api/jobs/${jobId}`);
+                    const statusRes = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/jobs/${jobId}`);
                     const statusData = await statusRes.json();
                     
                     if (statusData.state === 'completed') {

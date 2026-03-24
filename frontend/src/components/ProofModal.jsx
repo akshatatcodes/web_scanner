@@ -19,7 +19,7 @@ const ProofModal = ({ proof, onClose }) => {
         if (aiAnalysis || isAiLoading) return;
         setIsAiLoading(true);
         try {
-            const resp = await fetch('http://localhost:5000/api/ai/analyze', {
+            const resp = await fetch(`${import.meta.env.VITE_API_BASE || 'http://localhost:5000'}/api/ai/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ finding: proof })
