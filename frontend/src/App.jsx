@@ -11,7 +11,7 @@ import AttackChainView from './components/AttackChainView';
 import ReconDashboard from './components/ReconDashboard';
 import AttackConsole from './components/AttackConsole';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:5000/api`;
 
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
