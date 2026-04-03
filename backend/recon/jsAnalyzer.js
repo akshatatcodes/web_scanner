@@ -2,11 +2,11 @@ const axios = require('axios');
 const { safeRequest, pLimit } = require('./utils');
 
 const PATTERNS = {
-    endpoints: /(?:"|'|`)((\/api\/|\/v[1-9]\/|\/admin\/|\/graphql)[a-zA-Z0-9_\-\/]+)(?:"|'|`)/gi,
+    endpoints: /(?:"|'|`)((\/api\/|\/v[0-9.]+\/|\/admin\/|\/graphql|\/rest\/|\/internal\/)[a-zA-Z0-9_\-\/]+)(?:"|'|`)/gi,
     aws_keys: /AKIA[0-9A-Z]{16}/g,
     firebase: /AIza[0-9A-Za-z\-_]{35}/g,
     jwt: /ey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
-    generic_secrets: /(?:apiKey|api_key|secret|token|password|auth|access_token)[\s:=]+['"]([A-Za-z0-9_\-]{16,})['"]/gi
+    generic_secrets: /(?:apiKey|api_key|secret|token|password|auth|access_token|secret_key|secret_token|private_key|key|authorization|bearer|cred|credential)[\s:=]+['"`]([A-Za-z0-9_\-\.\~]{16,})['"`]/gi
 };
 
 const extractFromContent = async (content, url) => {

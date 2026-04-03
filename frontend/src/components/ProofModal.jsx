@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_BASE = (import.meta.env.VITE_API_BASE || 'http://localhost:5000').replace(/\/$/, '');
+const API_BASE = import.meta.env.VITE_API_BASE || `http://${window.location.hostname}:5000/api`;
 
 const severityColor = {
     CRITICAL: 'var(--danger)',
@@ -23,7 +23,7 @@ const ProofModal = ({ proof, onClose }) => {
         setIsAiLoading(true);
         setAiError(null);
         try {
-            const resp = await fetch(`${API_BASE}/api/ai/analyze`, {
+            const resp = await fetch(`${API_BASE}/ai/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ finding: proof })

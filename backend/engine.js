@@ -19,6 +19,7 @@ const { pLimit } = require('./recon/utils');
 const { scanAdminPanels } = require('./scanners/adminScanner');
 const { extractEndpoints } = require('./scanners/endpointScanner');
 const { scanSecrets } = require('./scanners/secretScanner');
+const { scanSensitiveData } = require('./scanners/sensitiveDataScanner');
 const { scanDirectories } = require('./scanners/directoryScanner');
 const { scanCORS } = require('./scanners/corsScanner');
 const { scanGraphQL } = require('./scanners/graphqlScanner');
@@ -171,8 +172,9 @@ async function run(url, options = {}) {
 
         // Specialized scanners that benefit from deep crawling context
         const scriptUrls = scanContext.scripts.filter(s => s.src).map(s => s.src);
-        const [secretLeaks, corsIssues, graphqlFindings, openRedirects, ssrfFindings, adminPanels, hiddenEndpoints, directories] = await Promise.all([
-            safeRun(scanSecrets, staticHtml), 
+        const [secretLeaks, sensitiveData, corsIssues, graphqlFindings, openRedirects, ssrfFindings, adminPanels, hiddenEndpoints, directories] = await Promise.all([
+            safeRun(scanSecrets, [staticHtml, ...scriptUrls]), 
+            safeRun(scanSensitiveData, [staticHtml, ...scriptUrls]),
             safeRun(scanCORS, url, staticHeaders),
             safeRun(scanGraphQL, url),
             safeRun(scanOpenRedirect, url),
@@ -385,6 +387,7 @@ async function run(url, options = {}) {
             adminPanels,
             hiddenEndpoints,
             secretLeaks,
+            sensitiveData,
             directories,
             corsIssues,
             graphqlFindings,
@@ -620,11 +623,36 @@ function buildStaticScanContext(url, html, headers) {
 async function deepCrawl(url, job = null) {
     if (job) await job.updateProgress({ message: "Deep crawl: Initializing Puppeteer...", percentage: 20 });
     console.log(`[Engine] Starting on-demand deep crawl for: ${url}`);
-    const crawler = new CrawlerService({ mode: 'active', maxPages: 15 });
     
-    const result = await crawler.crawl(url);
-    if (job) await job.updateProgress({ message: "Deep crawl: Finalizing analysis...", percentage: 90 });
-    return result;
+    // Use aggressive mode for deeper discovery as requested by user
+    const crawler = new CrawlerService({ mode: 'aggressive', maxPages: 25 });
+    
+    const scanContext = await crawler.crawl(url);
+    if (job) await job.updateProgress({ message: "Deep crawl: Running deep scanners...", percentage: 70 });
+
+    // Re-run the deep scanners on the expanded context
+    const scriptUrls = scanContext.scripts.filter(s => s.src).map(s => s.src);
+    const scriptContents = scanContext.scripts.filter(s => s.content).map(s => s.content);
+    
+    // Combine all sources for scanning
+    const allContentSources = [...scriptContents]; 
+    // We add individual script URLs for the scanners to fetch if they didn't get content
+    
+    const [secretLeaks, sensitiveData, hiddenEndpoints] = await Promise.all([
+        scanSecrets([...allContentSources, ...scriptUrls]),
+        scanSensitiveData([...allContentSources, ...scriptUrls]),
+        extractEndpoints(url, scriptUrls)
+    ]);
+
+    if (job) await job.updateProgress({ message: "Deep crawl: Finalizing analysis...", percentage: 95 });
+
+    return {
+        ...scanContext,
+        secretLeaks,
+        sensitiveData,
+        hiddenEndpoints,
+        timestamp: new Date().toISOString()
+    };
 }
 
 module.exports = { run, deepCrawl };

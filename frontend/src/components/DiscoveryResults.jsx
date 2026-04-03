@@ -34,6 +34,7 @@ const DiscoveryResults = ({
   adminPanels = [], 
   hiddenEndpoints = [], 
   secretLeaks = [],
+  sensitiveData = [],
   directories = [],
   corsIssues = [],
   graphqlFindings = [],
@@ -57,9 +58,9 @@ const DiscoveryResults = ({
   const jwtMediumLow = jwtIssues.filter(j => ['MEDIUM', 'LOW', 'INFO'].includes(j.severity?.toUpperCase()));
 
   const hasCritical = sqli.length > 0 || cmdInjection.length > 0 || jwtCritical.length > 0;
-  const hasHighRisk = authBypasses.length > 0 || secretLeaks.length > 0 || adminPanels.length > 0 || idors.length > 0 || jwtHigh.length > 0;
-  const hasMediumRisk = corsIssues.length > 0 || graphqlFindings.length > 0 || openRedirects.length > 0 || jwtMediumLow.length > 0;
-  const hasInfo = rateLimits.length > 0 || ssrfFindings.length > 0 || hiddenEndpoints.length > 0 || directories.length > 0;
+  const hasHighRisk = authBypasses.length > 0 || secretLeaks.length > 0 || adminPanels.length > 0 || idors.length > 0 || jwtHigh.length > 0 || sensitiveData.some(d => d.severity === 'HIGH');
+  const hasMediumRisk = corsIssues.length > 0 || graphqlFindings.length > 0 || openRedirects.length > 0 || jwtMediumLow.length > 0 || sensitiveData.some(d => d.severity === 'MEDIUM');
+  const hasInfo = rateLimits.length > 0 || ssrfFindings.length > 0 || hiddenEndpoints.length > 0 || directories.length > 0 || sensitiveData.some(d => d.severity === 'INFO' || d.severity === 'LOW');
   const hasDiscovery = scanContext && scanContext.endpoints?.length > 0;
   const hasWaf = waf && waf.detected;
 
@@ -356,6 +357,28 @@ const DiscoveryResults = ({
                 </div>
               )}
 
+              {sensitiveData.filter(d => d.severity === 'HIGH').length > 0 && (
+                <div className="discovery-section" style={{ borderLeft: '3px solid #ef4444' }}>
+                  <h4 className="discovery-title"><span className="discovery-icon">🕵️</span> Critical Sensitive Data</h4>
+                  <div className="discovery-list">
+                    {sensitiveData.filter(d => d.severity === 'HIGH').map((data, idx) => (
+                      <div key={idx} className="discovery-item secret-item">
+                        <div className="secret-header">
+                          <span className="secret-source">{data.type}</span>
+                          <span className={`risk-pill small ${getRiskClass(data.severity)}`}>{data.severity}</span>
+                        </div>
+                        <div className="secret-matches">
+                          {data.matches.map((match, midx) => (
+                            <div key={midx} className="secret-match-code">{match}</div>
+                          ))}
+                          <div className="url-text" style={{fontSize:'0.7rem', marginTop:'0.3rem'}}>{data.message}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {adminPanels.length > 0 && (
                 <div className="discovery-section" style={{ borderLeft: '3px solid #ef4444' }}>
                   <h4 className="discovery-title"><span className="discovery-icon">🚪</span> Admin Panels Found</h4>
@@ -457,6 +480,28 @@ const DiscoveryResults = ({
                 </div>
               )}
 
+              {sensitiveData.filter(d => d.severity === 'MEDIUM').length > 0 && (
+                <div className="discovery-section" style={{ borderLeft: '3px solid #f59e0b' }}>
+                  <h4 className="discovery-title"><span className="discovery-icon">🔍</span> Sensitive Data Exposed</h4>
+                  <div className="discovery-list">
+                    {sensitiveData.filter(d => d.severity === 'MEDIUM').map((data, idx) => (
+                      <div key={idx} className="discovery-item secret-item">
+                        <div className="secret-header">
+                          <span className="secret-source">{data.type}</span>
+                          <span className={`risk-pill small ${getRiskClass(data.severity)}`}>{data.severity}</span>
+                        </div>
+                        <div className="secret-matches">
+                          {data.matches.map((match, midx) => (
+                            <div key={midx} className="secret-match-code">{match}</div>
+                          ))}
+                          <div className="url-text" style={{fontSize:'0.7rem', marginTop:'0.3rem'}}>{data.message}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         )}
@@ -511,11 +556,17 @@ const DiscoveryResults = ({
 
               {hiddenEndpoints.length > 0 && (
                 <div className="discovery-section" style={{ borderLeft: '3px solid #3b82f6' }}>
-                  <h4 className="discovery-title"><span className="discovery-icon">🔌</span> Hidden APIs</h4>
-                  <div className="discovery-list endpoints-list">
+                  <h4 className="discovery-title"><span className="discovery-icon">🔌</span> Hidden APIs & Endpoints</h4>
+                  <div className="discovery-list">
                     {hiddenEndpoints.map((ep, idx) => (
-                      <div key={idx} className="discovery-item endpoint-item">
-                        <span className="discovery-value code-text">{ep.endpoint}</span>
+                      <div key={idx} className="discovery-item secret-item">
+                        <div className="secret-header">
+                          <span className="secret-source code-text" style={{fontSize: '0.8rem'}}>{ep.endpoint}</span>
+                          <span className={`risk-pill small ${getRiskClass(ep.severity)}`}>{ep.severity}</span>
+                        </div>
+                        <div className="secret-matches">
+                           <div className="url-text" style={{fontSize: '0.75rem'}}>{ep.message}</div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -530,6 +581,27 @@ const DiscoveryResults = ({
                       <div key={idx} className="discovery-item">
                         <span className="discovery-value url-text">{dir.url}</span>
                         <span className={`risk-pill small ${getRiskClass(dir.severity)}`}>{dir.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {sensitiveData.filter(d => d.severity === 'INFO' || d.severity === 'LOW').length > 0 && (
+                <div className="discovery-section" style={{ borderLeft: '3px solid #3b82f6' }}>
+                  <h4 className="discovery-title"><span className="discovery-icon">ℹ️</span> Data Insights</h4>
+                  <div className="discovery-list">
+                    {sensitiveData.filter(d => d.severity === 'INFO' || d.severity === 'LOW').map((data, idx) => (
+                      <div key={idx} className="discovery-item secret-item">
+                        <div className="secret-header">
+                          <span className="secret-source">{data.type}</span>
+                          <span className={`risk-pill small ${getRiskClass(data.severity)}`}>{data.severity}</span>
+                        </div>
+                        <div className="secret-matches">
+                          {data.matches.map((match, midx) => (
+                            <div key={midx} className="secret-match-code">{match}</div>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>

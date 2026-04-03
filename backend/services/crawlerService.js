@@ -72,6 +72,26 @@ class CrawlerService {
                 req.continue();
             });
 
+            // Capture script contents via response interception
+            page.on('response', async (res) => {
+                const url = res.url();
+                const resourceType = res.request().resourceType();
+                
+                if (resourceType === 'script' && res.status() === 200) {
+                    try {
+                        const content = await res.text();
+                        if (content) {
+                            this.results.scripts.push({
+                                src: url,
+                                content: content
+                            });
+                        }
+                    } catch (e) {
+                        // Response body might be empty or unavailable
+                    }
+                }
+            });
+
             // 2. SPA Route Monitoring
             await page.exposeFunction('onRouteChanged', (newUrl) => {
                 if (newUrl.includes(domain)) {

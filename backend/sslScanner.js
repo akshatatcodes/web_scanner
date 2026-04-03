@@ -28,9 +28,11 @@ class SSLScanner {
                 valid: false,
                 error: error.message,
                 protocol: 'Not Available',
+                isProtocolSecure: false,
                 cipher: 'Not Available',
                 issuer: 'Not Available',
-                remainingDays: 0
+                remainingDays: 0,
+                timestamp: new Date().toISOString()
             };
         }
     }

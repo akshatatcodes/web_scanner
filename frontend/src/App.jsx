@@ -154,6 +154,13 @@ function App() {
       await pollJobStatus(jobId,
         (finalResult) => {
            setCrawlContext(finalResult);
+           // Merge the new deep findings into the results state
+           setResults(prev => ({
+             ...prev,
+             secretLeaks: [...(prev.secretLeaks || []), ...(finalResult.secretLeaks || [])].filter((v, i, a) => a.findIndex(t => JSON.stringify(t) === JSON.stringify(v)) === i),
+             hiddenEndpoints: [...(prev.hiddenEndpoints || []), ...(finalResult.hiddenEndpoints || [])].filter((v, i, a) => a.findIndex(t => t.endpoint === v.endpoint) === i),
+             sensitiveData: [...(prev.sensitiveData || []), ...(finalResult.sensitiveData || [])].filter((v, i, a) => a.findIndex(t => JSON.stringify(t) === JSON.stringify(v)) === i)
+           }));
            setDeepCrawlDone(true);
            setDeepCrawling(false);
         },
@@ -517,6 +524,7 @@ function App() {
                 adminPanels={results.adminPanels}
                 hiddenEndpoints={results.hiddenEndpoints}
                 secretLeaks={results.secretLeaks}
+                sensitiveData={results.sensitiveData}
                 directories={results.directories}
                 corsIssues={results.corsIssues}
                 graphqlFindings={results.graphqlFindings}
