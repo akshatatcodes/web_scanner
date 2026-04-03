@@ -51,19 +51,46 @@ const PORT_SERVICES = {
  */
 async function scan(host) {
     try {
-        console.log(`[Port Scanner] Starting concurrent scan for ${host}...`);
+        console.log(`[Port Scanner] Starting reliable scan for ${host}...`);
         
-        // Scan ports in parallel
-        const workers = COMMON_PORTS.map(port => checkPort(host, port));
-        const results = await Promise.all(workers);
+        const openPorts = [];
+        const CONCURRENCY = 10;
+        const RETRIES = 2;
+        
+        // Process ports in chunks to control concurrency
+        for (let i = 0; i < COMMON_PORTS.length; i += CONCURRENCY) {
+            const chunk = COMMON_PORTS.slice(i, i + CONCURRENCY);
+            const chunkPromises = chunk.map(async (port) => {
+                let lastResult = { status: 'closed' };
+                
+                // Retry logic
+                for (let attempt = 0; attempt <= RETRIES; attempt++) {
+                    lastResult = await checkPort(host, port);
+                    if (lastResult.status === 'open') break;
+                    if (attempt < RETRIES) {
+                        // Small backoff between retries
+                        await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+                    }
+                }
+                
+                if (lastResult.status === 'open') {
+                    return {
+                        port: lastResult.port,
+                        service: PORT_SERVICES[lastResult.port] || 'Unknown Service',
+                        status: 'open'
+                    };
+                }
+                return null;
+            });
 
-        const openPorts = results
-            .filter(r => r.status === 'open')
-            .map(r => ({
-                port: r.port,
-                service: PORT_SERVICES[r.port] || 'Unknown Service',
-                status: 'open'
-            }));
+            const results = await Promise.all(chunkPromises);
+            openPorts.push(...results.filter(Boolean));
+            
+            // Adaptive delay between chunks
+            if (i + CONCURRENCY < COMMON_PORTS.length) {
+                await new Promise(r => setTimeout(r, 150));
+            }
+        }
 
         if (openPorts.length > 0) {
             const portList = openPorts.map(p => p.port).join(', ');
@@ -85,7 +112,7 @@ async function scan(host) {
 function checkPort(host, port) {
     return new Promise(resolve => {
         const socket = new net.Socket();
-        socket.setTimeout(1500); // 1.5 second timeout
+        socket.setTimeout(3000); // 3 second timeout (increased from 1.5s)
 
         socket
             .connect(port, host, () => {
